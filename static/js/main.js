@@ -52,6 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const captureBtn = document.getElementById('capture-btn');
     const visionResults = document.getElementById('vision-results');
 
+    // Floating Audio Controller Elements
+    const audioControlBar = document.getElementById('audio-control-bar');
+    const audioStatusText = document.getElementById('audio-status-text');
+    const audioBtnRetell = document.getElementById('audio-btn-retell');
+    const audioBtnPause = document.getElementById('audio-btn-pause');
+    const audioBtnStop = document.getElementById('audio-btn-stop');
+
     let currentMode = 'Teacher';
     let currentConversationId = null;
     let isRecording = false;
@@ -329,6 +336,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         userInput.value = '';
         clearImagePreview();
+        ttsPlayer.pause();
+        audioControlBar.style.display = 'none';
         
         // Re-attach listeners to new prompt chips
         const newChips = chatHistory.querySelectorAll('.prompt-chip');
@@ -431,6 +440,42 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Could not export session history.");
         }
     }
+
+    // --- TTS Player Listeners ---
+    ttsPlayer.addEventListener('play', () => {
+        audioControlBar.style.display = 'flex';
+        audioStatusText.textContent = "Speaking...";
+        audioBtnPause.innerHTML = '<i class="fas fa-pause"></i>';
+    });
+
+    ttsPlayer.addEventListener('pause', () => {
+        audioStatusText.textContent = "Paused";
+        audioBtnPause.innerHTML = '<i class="fas fa-play"></i>';
+    });
+
+    ttsPlayer.addEventListener('ended', () => {
+        audioControlBar.style.display = 'none';
+    });
+
+    // --- Audio Control Widget Actions ---
+    audioBtnPause.addEventListener('click', () => {
+        if (ttsPlayer.paused) {
+            ttsPlayer.play();
+        } else {
+            ttsPlayer.pause();
+        }
+    });
+
+    audioBtnStop.addEventListener('click', () => {
+        ttsPlayer.pause();
+        ttsPlayer.currentTime = 0;
+        audioControlBar.style.display = 'none';
+    });
+
+    audioBtnRetell.addEventListener('click', () => {
+        ttsPlayer.currentTime = 0;
+        ttsPlayer.play();
+    });
 
     // --- Event Listeners ---
     sendBtn.addEventListener('click', handleSendMessage);
