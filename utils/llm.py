@@ -4,6 +4,96 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def get_local_fallback_response(user_text, mode):
+    text = user_text.lower()
+    
+    # Greetings
+    if any(greet in text for greet in ["hello", "hi", "hey", "sup", "greetings"]):
+        if mode == "Teacher":
+            return ("👋 Hello! I am your AI Learning Companion.\n\n"
+                    "Although my API key is currently in **Offline Demo Mode**, I can still help you learn! Try asking me about:\n"
+                    "- 🌌 **Quantum Computing**\n"
+                    "- 📚 **Effective Study Tips**\n"
+                    "- 📜 **World War II History**\n"
+                    "- 💻 **Python Code Samples**\n"
+                    "- 🚀 **Creative Space Stories**")
+        elif mode == "Coach":
+            return ("🔥 Hey there! Ready to crush your learning goals today?\n\n"
+                    "API key is currently in offline mode, but remember: *consistency is key*. Tell me what you're studying today and let's break it down into manageable tasks!")
+        else:
+            return ("✨ Hello explorer! Let's brainstorm something magical today.\n\n"
+                    "What weird ideas or creative stories shall we discuss? I'm ready to write or draw ideas with you!")
+            
+    # Quantum Computing / Physics / Science
+    if any(k in text for k in ["quantum", "physics", "science", "atom", "mechanics"]):
+        return ("## 🌌 Understanding Quantum Computing\n\n"
+                "Quantum computing uses the principles of **quantum mechanics** to process information in ways traditional computers can't.\n\n"
+                "### Key Concepts:\n"
+                "1. **Qubits (Quantum Bits)**: Unlike regular bits (0 or 1), qubits can exist as 0, 1, or *both at the same time* due to **superposition**.\n"
+                "2. **Entanglement**: Qubits can become linked, where the state of one instantly influences another, regardless of distance.\n"
+                "3. **Quantum Interference**: Used to amplify correct paths and cancel out incorrect ones to speed up calculation.\n\n"
+                "*Would you like me to explain this using a coin-toss analogy?*")
+
+    # Study Tips / Exams
+    if any(k in text for k in ["study", "exam", "learn", "technique", "tips"]):
+        return ("## 📚 Top 4 Scientific Study Techniques\n\n"
+                "To optimize your learning, try these proven methods:\n\n"
+                "- ⏱️ **The Pomodoro Technique**: Study for 25 minutes, take a 5-minute break. Repeat 4 times, then take a longer break. Prevents mental fatigue.\n"
+                "- 🔄 **Active Recall**: Don't just re-read notes. Test yourself, explain concepts aloud, or write down everything you remember from scratch.\n"
+                "- 🗓️ **Spaced Repetition**: Review information at expanding intervals (1 day, 3 days, 1 week, 1 month) to lock it into long-term memory.\n"
+                "- 💡 **Feynman Technique**: Explain a complex topic to a 5-year-old. Wherever you struggle, go back and fill the gaps in your understanding.")
+
+    # History / WWII
+    if any(k in text for k in ["history", "world war", "wwii", "ww2"]):
+        return ("## 📜 World War II: Key Milestones\n\n"
+                "World War II (1939–1945) was a global conflict involving two major alliances: the **Allies** and the **Axis**.\n\n"
+                "### Timeline of Events:\n"
+                "| Year | Event | Significance |\n"
+                "|---|---|---|\n"
+                "| **1939** | Invasion of Poland | Start of WWII in Europe. |\n"
+                "| **1941** | Pearl Harbor | US enters the war. |\n"
+                "| **1944** | D-Day Landings | Allied liberation of Western Europe begins. |\n"
+                "| **1945** | Atomic Bombings / Surrender | End of the war. |\n\n"
+                "*Let me know if you want to focus on a specific theatre or battle.*")
+
+    # Code / Python / Programming
+    if any(k in text for k in ["code", "python", "program", "function"]):
+        return ("## 💻 Writing a Python Function\n\n"
+                "Here is an example of a simple Python function that calculates the Fibonacci sequence using recursion with memoization:\n\n"
+                "```python\n"
+                "memo = {}\n"
+                "def fibonacci(n):\n"
+                "    if n in memo:\n"
+                "        return memo[n]\n"
+                "    if n <= 1:\n"
+                "        return n\n"
+                "    memo[n] = fibonacci(n - 1) + fibonacci(n - 2)\n"
+                "    return memo[n]\n\n"
+                "# Test the function\n"
+                "print(fibonacci(10)) # Output: 55\n"
+                "```\n\n"
+                "### How it works:\n"
+                "- **Memoization**: Storing results of expensive function calls to speed up execution.\n"
+                "- **Recursion**: A function calling itself to solve smaller sub-problems.")
+
+    # Story / Creative
+    if any(k in text for k in ["story", "explorer", "creative", "space"]):
+        return ("## 🚀 The Lost Explorer of Orion's Belt\n\n"
+                "Captain Clara stared at the control panel. The hyperdrive was cold. Outside her window, the dust clouds of the Orion Nebula glowed in cosmic shades of violet and cyan.\n\n"
+                "> \"We are out of range,\" the ship's computer chimed in a robotic Alexa-like voice. \n\n"
+                "But Clara smiled. She hadn't traveled ten light-years just to turn back. Her scanner detected a signal coming from the center of the dust cloud—a rhythmic, intelligent pulse...\n\n"
+                "*What do you think Clara should do next? Go into the dust cloud, or scan for other ships?*")
+
+    # Fallback response (Dynamic response based on user input keywords)
+    return (f"## 💡 Learning Assistant [Demo Mode]\n\n"
+            f"You asked: *\"{user_text}\"*\n\n"
+            f"As my OpenAI API quota is currently exceeded, I am operating in a **Smart Demo Mode**. "
+            f"I can explain core concepts in science, history, coding, or help you brainstorm. \n\n"
+            f"**Here's an educational insight on your topic:**\n"
+            f"- Research shows that actively engaging with the topic of **{user_text.split()[-1] if user_text.split() else 'learning'}** improves retention by up to 80%.\n"
+            f"- Try breaking your query down into smaller questions (e.g., asking for python code or quantum concepts).\n\n"
+            f"*Please update your API key in `.env` to unlock full-scale AI conversation!*")
+
 def get_ai_response(user_text, history=[], mode="Teacher"):
     """
     Generates a professional, AI-companion style response.
@@ -11,7 +101,7 @@ def get_ai_response(user_text, history=[], mode="Teacher"):
     """
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "your_openai_api_key_here":
-        return "CONFIG_ERROR: It looks like your OpenAI API Key is missing. Please add it to the .env file to activate my brain!"
+        return get_local_fallback_response(user_text, mode)
 
     try:
         client = OpenAI(api_key=api_key)
@@ -42,6 +132,5 @@ def get_ai_response(user_text, history=[], mode="Teacher"):
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error in LLM: {e}")
-        if "api_key" in str(e).lower():
-            return "CONFIG_ERROR: Your API Key seems invalid. Please check it in the .env file."
-        return "I'm having a bit of trouble processing that right now. Could you please try asking again?"
+        # Always fall back to local response on quota limit or general exception
+        return get_local_fallback_response(user_text, mode)

@@ -67,16 +67,26 @@
             </div>
 
             <div class="sidebar-footer">
-                <p class="sidebar-version">v1.2.0 • Alexa & Gemini API Mode</p>
+                <button id="export-history-btn" class="btn btn-outline-export">
+                    <i class="fas fa-file-export"></i> Export Chats
+                </button>
+                <p class="sidebar-version">v1.3.0 • AI Vision Enabled</p>
             </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main-container">
             <header class="top-nav">
-                <button id="sidebar-toggle-open" class="icon-btn"><i class="fas fa-bars"></i></button>
-                <div class="current-mode-label" id="current-mode-display">Learning Assistant</div>
-                <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                <div class="nav-left">
+                    <button id="sidebar-toggle-open" class="icon-btn"><i class="fas fa-bars"></i></button>
+                    <div class="current-mode-label" id="current-mode-display">Learning Assistant</div>
+                </div>
+                <div class="nav-right">
+                    <button id="camera-toggle-btn" class="icon-btn" title="Open AI Vision Trainer">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                    <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                </div>
             </header>
 
             <div id="chat-history" class="chat-container">
@@ -94,12 +104,42 @@
                 </div>
             </div>
 
+            <!-- Vision Trainer Modal / Panel -->
+            <div class="camera-panel" id="camera-panel" style="display: none;">
+                <div class="camera-header">
+                    <h3><i class="fas fa-video"></i> AI Vision Trainer</h3>
+                    <button id="camera-close-btn" class="icon-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="camera-view-wrapper">
+                    <video id="webcam" autoplay playsinline muted></video>
+                    <canvas id="capture-canvas" style="display: none;"></canvas>
+                    <div class="camera-overlay">
+                        <div class="scanner-line"></div>
+                        <div class="target-box"></div>
+                    </div>
+                </div>
+                <div class="camera-controls">
+                    <button id="capture-btn" class="btn btn-primary"><i class="fas fa-circle-notch"></i> Capture & Learn</button>
+                    <div class="vision-results" id="vision-results">Align your study material or object in the center and click Capture.</div>
+                </div>
+            </div>
+
             <div class="thinking-state" id="thinking-indicator">
                 <div class="thinking-glow"></div>
                 <span>Processing...</span>
             </div>
 
             <div class="input-container">
+                <!-- Alexa Voice Visualizer -->
+                <div class="voice-visualizer" id="voice-visualizer" style="display: none;">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <span class="vis-text">Listening to your voice...</span>
+                </div>
+
                 <div class="input-bar">
                     <button id="mic-btn" class="mic-btn" title="Speak to AI">
                         <i class="fas fa-microphone"></i>
