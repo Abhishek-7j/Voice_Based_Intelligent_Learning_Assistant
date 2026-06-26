@@ -82,9 +82,6 @@
                     <div class="current-mode-label" id="current-mode-display">Learning Assistant</div>
                 </div>
                 <div class="nav-right">
-                    <button id="camera-toggle-btn" class="icon-btn" title="Open AI Vision Trainer">
-                        <i class="fas fa-camera"></i>
-                    </button>
                     <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
                 </div>
             </header>
@@ -130,6 +127,14 @@
             </div>
 
             <div class="input-container">
+                <!-- Image Preview Container -->
+                <div class="image-preview-container" id="image-preview-container" style="display: none;">
+                    <div class="image-preview-wrapper">
+                        <img id="image-preview" src="" alt="Upload Preview">
+                        <button id="remove-image-btn" class="remove-image-btn" title="Remove image"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
                 <!-- Alexa Voice Visualizer -->
                 <div class="voice-visualizer" id="voice-visualizer" style="display: none;">
                     <div class="bar"></div>
@@ -141,13 +146,28 @@
                 </div>
 
                 <div class="input-bar">
-                    <button id="mic-btn" class="mic-btn" title="Speak to AI">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                    <input type="text" id="user-input" placeholder="Enter a prompt here..." autocomplete="off">
-                    <button id="send-btn" class="send-btn">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <div class="input-actions-left">
+                        <button id="image-upload-trigger" class="input-action-btn" title="Upload Image">
+                            <i class="fas fa-image"></i>
+                        </button>
+                        <input type="file" id="image-file-input" accept="image/*" style="display: none;">
+                        
+                        <button id="camera-btn" class="input-action-btn" title="Snap Photo with Camera">
+                            <i class="fas fa-camera"></i>
+                        </button>
+
+                        <button id="mic-btn" class="mic-btn" title="Speak to AI">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                    </div>
+
+                    <input type="text" id="user-input" placeholder="Ask a question or upload a study photo..." autocomplete="off">
+                    
+                    <div class="input-actions-right">
+                        <button id="send-btn" class="send-btn" title="Send Prompt">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
                 </div>
                 <p class="input-footer">AI Mentor can make mistakes. Check important info.</p>
             </div>

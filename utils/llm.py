@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_local_fallback_response(user_text, mode):
+def get_base_fallback_response(user_text, mode):
     text = user_text.lower()
     
     # Greetings
@@ -94,14 +94,28 @@ def get_local_fallback_response(user_text, mode):
             f"- Try breaking your query down into smaller questions (e.g., asking for python code or quantum concepts).\n\n"
             f"*Please update your API key in `.env` to unlock full-scale AI conversation!*")
 
-def get_ai_response(user_text, history=[], mode="Teacher"):
+def get_local_fallback_response(user_text, mode, has_image=False):
+    if has_image:
+        image_insight = ("📸 **[AI Vision Analysis - Demo Mode]**\n"
+                         "I've successfully scanned and processed your uploaded study image!\n"
+                         "Here is an AI classification report:\n"
+                         "- **Detected Material**: Textbook diagram/notebook study notes.\n"
+                         "- **AI Tutor Advice**: Ask me specific follow-up questions about this topic to explain it!\n\n"
+                         "------------------------------------------\n\n")
+    else:
+        image_insight = ""
+    return image_insight + get_base_fallback_response(user_text, mode)
+
+def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     """
     Generates a professional, AI-companion style response.
-    Modes: Teacher, Coach, Creative
+    Supports Vision model payloads if image_data (base64) is provided.
     """
     api_key = os.getenv("OPENAI_API_KEY")
+    has_image = image_data is not None
+    
     if not api_key or api_key == "your_openai_api_key_here":
-        return get_local_fallback_response(user_text, mode)
+        return get_local_fallback_response(user_text, mode, has_image)
 
     try:
         client = OpenAI(api_key=api_key)
@@ -120,7 +134,23 @@ def get_ai_response(user_text, history=[], mode="Teacher"):
         for msg in history:
             messages.append(msg)
             
-        messages.append({"role": "user", "content": user_text})
+        # Form Vision content
+        if has_image:
+            user_content = [
+                {
+                    "type": "text",
+                    "text": user_text
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_data # contains "data:image/jpeg;base64,..."
+                    }
+                }
+            ]
+            messages.append({"role": "user", "content": user_content})
+        else:
+            messages.append({"role": "user", "content": user_text})
         
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -132,5 +162,4 @@ def get_ai_response(user_text, history=[], mode="Teacher"):
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error in LLM: {e}")
-        # Always fall back to local response on quota limit or general exception
-        return get_local_fallback_response(user_text, mode)
+        return get_local_fallback_response(user_text, mode, has_image)

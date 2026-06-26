@@ -36,9 +36,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeDisplay = document.getElementById('current-mode-display');
     const exportHistoryBtn = document.getElementById('export-history-btn');
 
+    // Gemini Image Options
+    const imageUploadTrigger = document.getElementById('image-upload-trigger');
+    const imageFileInput = document.getElementById('image-file-input');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const removeImageBtn = document.getElementById('remove-image-btn');
+
     // Camera Panel Elements
     const cameraPanel = document.getElementById('camera-panel');
-    const cameraToggleBtn = document.getElementById('camera-toggle-btn');
+    const cameraBtn = document.getElementById('camera-btn');
     const cameraCloseBtn = document.getElementById('camera-close-btn');
     const webcam = document.getElementById('webcam');
     const captureCanvas = document.getElementById('capture-canvas');
@@ -49,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentConversationId = null;
     let isRecording = false;
     let webcamStream = null;
+    let currentUploadedImageBase64 = null;
 
     // --- Speech Recognition ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -76,6 +84,33 @@ document.addEventListener('DOMContentLoaded', () => {
             handleSendMessage();
         };
     }
+
+    // --- Image Preview / Handling ---
+    imageUploadTrigger.addEventListener('click', () => {
+        imageFileInput.click();
+    });
+
+    imageFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            currentUploadedImageBase64 = event.target.result;
+            imagePreview.src = currentUploadedImageBase64;
+            imagePreviewContainer.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    function clearImagePreview() {
+        currentUploadedImageBase64 = null;
+        imagePreview.src = '';
+        imagePreviewContainer.style.display = 'none';
+        imageFileInput.value = '';
+    }
+
+    removeImageBtn.addEventListener('click', clearImagePreview);
 
     // --- UI Logic ---
     function appendMessage(role, text, isError = false) {
@@ -107,10 +142,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleSendMessage() {
         const text = userInput.value.trim();
-        if (!text) return;
+        if (!text && !currentUploadedImageBase64) return;
+
+        // Reset text box but keep a copy of values for sending
+        const textToSend = text || (currentUploadedImageBase64 ? "Analyze this uploaded photo." : "");
+        const imageToSend = currentUploadedImageBase64;
 
         userInput.value = '';
-        appendMessage('user', text);
+        appendMessage('user', textToSend);
+        
+        // If there was an image, render it locally in the chat feed
+        if (imageToSend) {
+            const chatImgWrapper = document.createElement('div');
+            chatImgWrapper.className = 'message user chat-inline-img-wrapper';
+            chatImgWrapper.style.padding = '8px';
+            chatImgWrapper.style.maxWidth = '180px';
+            chatImgWrapper.style.marginTop = '-12px';
+            
+            const chatImg = document.createElement('img');
+            chatImg.src = imageToSend;
+            chatImg.style.width = '100%';
+            chatImg.style.borderRadius = '8px';
+            chatImg.style.border = '1px solid var(--border-color)';
+            
+            chatImgWrapper.appendChild(chatImg);
+            chatHistory.appendChild(chatImgWrapper);
+            chatHistory.scrollTo({ top: chatHistory.scrollHeight, behavior: 'smooth' });
+        }
+
+        clearImagePreview();
         thinkingIndicator.style.display = 'block';
 
         try {
@@ -119,10 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    text, 
+                    text: textToSend, 
                     mode: currentMode, 
                     conversation_id: currentConversationId,
-                    voice: selectedVoice
+                    voice: selectedVoice,
+                    image_data: imageToSend
                 })
             });
 
@@ -267,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         userInput.value = '';
+        clearImagePreview();
         
         // Re-attach listeners to new prompt chips
         const newChips = chatHistory.querySelectorAll('.prompt-chip');
@@ -314,28 +376,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Draw video frame to canvas
         ctx.drawImage(webcam, 0, 0, captureCanvas.width, captureCanvas.height);
         
-        visionResults.textContent = "AI analyzing frame...";
-        
-        // Simulate local intelligent vision detection category list
-        const detections = [
-            "Physics Textbook - Chapter 4 (Electromagnetism)",
-            "Python Programming Cheat Sheet",
-            "Periodic Table of Elements Chart",
-            "Biology Diagram: Cell Structure",
-            "Active Student Focus detected: Studying Chemistry"
-        ];
+        visionResults.textContent = "AI capturing frame...";
         
         setTimeout(() => {
-            const detectedObject = detections[Math.floor(Math.random() * detections.length)];
-            visionResults.innerHTML = `<strong>✨ Detected:</strong> ${detectedObject}`;
+            const dataUrl = captureCanvas.toDataURL('image/jpeg');
+            currentUploadedImageBase64 = dataUrl;
+            imagePreview.src = dataUrl;
+            imagePreviewContainer.style.display = 'flex';
             
-            // Auto submit to chatbot context
-            userInput.value = `Explain the following study material detected by my camera: ${detectedObject}`;
-            handleSendMessage();
+            visionResults.innerHTML = `<strong>✨ Image captured!</strong> You can now type a question below to analyze this photo.`;
             
-            // Close camera panel
-            setTimeout(stopCamera, 2000);
-        }, 1500);
+            // Close camera panel after a short delay
+            setTimeout(stopCamera, 1000);
+        }, 800);
     }
 
     // --- Export Chat Logic ---
@@ -414,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebarToggleClose.addEventListener('click', () => sidebar.classList.add('hidden'));
 
     // Camera Handlers
-    cameraToggleBtn.addEventListener('click', startCamera);
+    cameraBtn.addEventListener('click', startCamera);
     cameraCloseBtn.addEventListener('click', stopCamera);
     captureBtn.addEventListener('click', captureAndAnalyze);
 

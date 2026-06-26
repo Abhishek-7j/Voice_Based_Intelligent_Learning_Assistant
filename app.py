@@ -27,6 +27,7 @@ def ask():
     mode = data.get('mode', 'Teacher')
     conv_id = data.get('conversation_id') or str(uuid.uuid4())
     voice = data.get('voice', 'nova')
+    image_data = data.get('image_data') # base64 string
     
     if not user_text:
         return jsonify({'error': 'Empty message'}), 400
@@ -35,7 +36,7 @@ def ask():
     history = get_history(conv_id)
     
     # Get AI response
-    ai_response_text = get_ai_response(user_text, history, mode)
+    ai_response_text = get_ai_response(user_text, history, mode, image_data)
     
     if "CONFIG_ERROR:" in ai_response_text:
         return jsonify({'error': 'configuration_needed', 'message': ai_response_text}), 401
