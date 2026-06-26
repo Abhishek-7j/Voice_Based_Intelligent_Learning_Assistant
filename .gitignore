@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Databases
+*.db
+*.sqlite3
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+
+# OS/System files
+.DS_Store
+Thumbs.db
+
+# Project generated audio files
+static/audio/*.mp3
+uploads/

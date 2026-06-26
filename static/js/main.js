@@ -1,0 +1,306 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // Configure Marked with Highlight.js
+    if (typeof marked !== 'undefined') {
+        marked.use({
+            gfm: true,
+            breaks: true,
+            highlight(code, lang) {
+                if (typeof hljs !== 'undefined') {
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language }).value;
+                }
+                return code;
+            }
+        });
+    }
+
+    // DOM Elements
+    const micBtn = document.getElementById('mic-btn');
+    const sendBtn = document.getElementById('send-btn');
+    const userInput = document.getElementById('user-input');
+    const chatHistory = document.getElementById('chat-history');
+    const thinkingIndicator = document.getElementById('thinking-indicator');
+    const ttsPlayer = document.getElementById('tts-player');
+    
+    // Sidebar/Mode Controls
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggleOpen = document.getElementById('sidebar-toggle-open');
+    const sidebarToggleClose = document.getElementById('sidebar-toggle-close');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const promptChips = document.querySelectorAll('.prompt-chip');
+    const autoplayToggle = document.getElementById('autoplay-toggle');
+    const voiceSelect = document.getElementById('voice-select');
+    const historyList = document.getElementById('history-list');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const modeDisplay = document.getElementById('current-mode-display');
+
+    let currentMode = 'Teacher';
+    let currentConversationId = null;
+    let isRecording = false;
+
+    // --- Speech Recognition ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            isRecording = true;
+            micBtn.classList.add('recording');
+        };
+
+        recognition.onend = () => {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+        };
+
+        recognition.onresult = (event) => {
+            userInput.value = event.results[0][0].transcript;
+            handleSendMessage();
+        };
+    }
+
+    // --- UI Logic ---
+    function appendMessage(role, text, isError = false) {
+        // Remove welcome screen on first message
+        const welcome = document.getElementById('welcome-section');
+        if (welcome) welcome.style.display = 'none';
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', role);
+        if (isError) messageDiv.style.color = '#ff6b6b';
+        
+        // Parse Markdown for AI messages, simple text for User messages
+        if (role === 'ai' && typeof marked !== 'undefined' && !isError) {
+            messageDiv.innerHTML = marked.parse(text);
+        } else {
+            messageDiv.textContent = text;
+        }
+        
+        chatHistory.appendChild(messageDiv);
+        chatHistory.scrollTo({ top: chatHistory.scrollHeight, behavior: 'smooth' });
+        
+        // Trigger code highlighting
+        if (role === 'ai' && typeof hljs !== 'undefined') {
+            messageDiv.querySelectorAll('pre code').forEach((el) => {
+                hljs.highlightElement(el);
+            });
+        }
+    }
+
+    async function handleSendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        userInput.value = '';
+        appendMessage('user', text);
+        thinkingIndicator.style.display = 'block';
+
+        try {
+            const selectedVoice = voiceSelect.value;
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    text, 
+                    mode: currentMode, 
+                    conversation_id: currentConversationId,
+                    voice: selectedVoice
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error === 'configuration_needed') {
+                appendMessage('ai', `<strong>⚠️ Configuration Needed:</strong><br>${data.message}`, true);
+            } else if (data.error) {
+                appendMessage('ai', "Error: " + data.message, true);
+            } else {
+                // If it's a new conversation, set the session ID
+                if (!currentConversationId && data.conversation_id) {
+                    currentConversationId = data.conversation_id;
+                }
+                appendMessage('ai', data.response);
+                if (data.audio_url && autoplayToggle.checked) {
+                    ttsPlayer.src = data.audio_url;
+                    ttsPlayer.play();
+                }
+                loadConversations(); // Reload sidebar sessions
+            }
+        } catch (error) {
+            appendMessage('ai', "I'm having trouble reaching the server. Please check your connection.", true);
+        } finally {
+            thinkingIndicator.style.display = 'none';
+        }
+    }
+
+    // --- Sidebar Session Loading ---
+    async function loadConversations() {
+        try {
+            const response = await fetch('/history');
+            const conversations = await response.json();
+
+            historyList.innerHTML = '';
+            if (conversations.length === 0) {
+                historyList.innerHTML = '<div class="no-history-msg">No recent chats</div>';
+                return;
+            }
+
+            conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                if (conv.id === currentConversationId) {
+                    item.classList.add('active');
+                }
+                item.dataset.id = conv.id;
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'history-item-title';
+                titleSpan.textContent = conv.title || "Chat Session";
+                titleSpan.addEventListener('click', () => selectConversation(conv.id, conv.mode));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'history-item-delete';
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteConversation(conv.id);
+                });
+
+                item.appendChild(titleSpan);
+                item.appendChild(deleteBtn);
+                historyList.appendChild(item);
+            });
+        } catch (err) {
+            console.error("Failed to load conversations history:", err);
+        }
+    }
+
+    async function selectConversation(convId, mode) {
+        currentConversationId = convId;
+        
+        // Update mode active buttons
+        if (mode) {
+            currentMode = mode;
+            modeBtns.forEach(b => {
+                if (b.dataset.mode === mode) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+            modeDisplay.textContent = mode + " Mode";
+        }
+
+        // Highlight active session
+        document.querySelectorAll('.history-item').forEach(item => {
+            if (item.dataset.id === convId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        // Load messages
+        try {
+            thinkingIndicator.style.display = 'block';
+            const response = await fetch(`/history/${convId}`);
+            const messages = await response.json();
+            
+            // Clear current messages
+            chatHistory.innerHTML = '';
+
+            messages.forEach(msg => {
+                appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content);
+            });
+        } catch (err) {
+            console.error("Failed to fetch messages for session:", err);
+        } finally {
+            thinkingIndicator.style.display = 'none';
+        }
+    }
+
+    async function deleteConversation(convId) {
+        if (!confirm("Are you sure you want to delete this chat session?")) return;
+        try {
+            await fetch(`/clear/${convId}`, { method: 'POST' });
+            if (currentConversationId === convId) {
+                startNewChat();
+            }
+            loadConversations();
+        } catch (err) {
+            console.error("Failed to delete conversation:", err);
+        }
+    }
+
+    function startNewChat() {
+        currentConversationId = null;
+        chatHistory.innerHTML = `
+            <div class="welcome-section" id="welcome-section">
+                <div class="welcome-icon"><i class="fas fa-brain"></i></div>
+                <h2>How can I help you learn today?</h2>
+                <p>Select a quick action or start speaking.</p>
+                
+                <div class="quick-prompts">
+                    <button class="prompt-chip" data-text="Explain the concept of quantum computing simply.">Quantum Computing</button>
+                    <button class="prompt-chip" data-text="What are some effective study techniques for exams?">Study Tips</button>
+                    <button class="prompt-chip" data-text="Give me a 5-minute summary of World War II.">History Recap</button>
+                    <button class="prompt-chip" data-text="Help me write a creative story about a space explorer.">Story Ideas</button>
+                </div>
+            </div>
+        `;
+        userInput.value = '';
+        
+        // Re-attach listeners to new prompt chips
+        const newChips = chatHistory.querySelectorAll('.prompt-chip');
+        newChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                userInput.value = chip.dataset.text;
+                handleSendMessage();
+            });
+        });
+
+        // Remove active class from sidebar history items
+        document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+    }
+
+    // --- Event Listeners ---
+    sendBtn.addEventListener('click', handleSendMessage);
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
+
+    micBtn.addEventListener('click', () => {
+        if (!recognition) return alert("Speech recognition not supported in this browser.");
+        isRecording ? recognition.stop() : recognition.start();
+    });
+
+    // Prompt Chips Initial Binding
+    promptChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            userInput.value = chip.dataset.text;
+            handleSendMessage();
+        });
+    });
+
+    // Mode Selection
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = btn.dataset.mode;
+            modeDisplay.textContent = currentMode + " Mode";
+        });
+    });
+
+    // New Chat Button
+    newChatBtn.addEventListener('click', startNewChat);
+
+    // Sidebar Toggles
+    sidebarToggleOpen.addEventListener('click', () => sidebar.classList.remove('hidden'));
+    sidebarToggleClose.addEventListener('click', () => sidebar.classList.add('hidden'));
+
+    // Initial Load
+    loadConversations();
+});

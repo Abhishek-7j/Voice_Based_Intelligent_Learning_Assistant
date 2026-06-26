@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Mentor | Next-Gen Learning Companion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Highlight.js for beautiful code blocks -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="theme-dark">
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-sparkles"></i>
+                    <span>AI Mentor</span>
+                </div>
+                <button id="sidebar-toggle-close" class="icon-btn"><i class="fas fa-chevron-left"></i></button>
+            </div>
+            
+            <div class="sidebar-content">
+                <button id="new-chat-btn" class="btn btn-primary new-chat-btn">
+                    <i class="fas fa-plus"></i> New Chat
+                </button>
+
+                <div class="section-label">Options</div>
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="Teacher"><i class="fas fa-graduation-cap"></i> Teacher</button>
+                    <button class="mode-btn" data-mode="Coach"><i class="fas fa-fire"></i> Coach</button>
+                    <button class="mode-btn" data-mode="Creative"><i class="fas fa-paint-brush"></i> Creative</button>
+                </div>
+
+                <div class="section-label">Recent Chats</div>
+                <div class="history-list" id="history-list">
+                    <!-- Session history items will be loaded dynamically here -->
+                    <div class="no-history-msg">No recent chats</div>
+                </div>
+
+                <div class="section-label">Settings</div>
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <span>Autoplay Voice</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoplay-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-col">
+                        <span>Voice Model</span>
+                        <select id="voice-select" class="custom-select">
+                            <option value="nova" selected>Nova (Feminine)</option>
+                            <option value="shimmer">Shimmer (Bright)</option>
+                            <option value="alloy">Alloy (Neutral)</option>
+                            <option value="echo">Echo (Balanced)</option>
+                            <option value="fable">Fable (Warm)</option>
+                            <option value="onyx">Onyx (Masculine)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <p class="sidebar-version">v1.2.0 • Alexa & Gemini API Mode</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-container">
+            <header class="top-nav">
+                <button id="sidebar-toggle-open" class="icon-btn"><i class="fas fa-bars"></i></button>
+                <div class="current-mode-label" id="current-mode-display">Learning Assistant</div>
+                <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+            </header>
+
+            <div id="chat-history" class="chat-container">
+                <div class="welcome-section" id="welcome-section">
+                    <div class="welcome-icon"><i class="fas fa-brain"></i></div>
+                    <h2>How can I help you learn today?</h2>
+                    <p>Select a quick action or start speaking.</p>
+                    
+                    <div class="quick-prompts">
+                        <button class="prompt-chip" data-text="Explain the concept of quantum computing simply.">Quantum Computing</button>
+                        <button class="prompt-chip" data-text="What are some effective study techniques for exams?">Study Tips</button>
+                        <button class="prompt-chip" data-text="Give me a 5-minute summary of World War II.">History Recap</button>
+                        <button class="prompt-chip" data-text="Help me write a creative story about a space explorer.">Story Ideas</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="thinking-state" id="thinking-indicator">
+                <div class="thinking-glow"></div>
+                <span>Processing...</span>
+            </div>
+
+            <div class="input-container">
+                <div class="input-bar">
+                    <button id="mic-btn" class="mic-btn" title="Speak to AI">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <input type="text" id="user-input" placeholder="Enter a prompt here..." autocomplete="off">
+                    <button id="send-btn" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <p class="input-footer">AI Mentor can make mistakes. Check important info.</p>
+            </div>
+        </main>
+    </div>
+
+    <audio id="tts-player" hidden></audio>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
