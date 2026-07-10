@@ -64,9 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const hotwordToggle = document.getElementById('hotword-toggle');
     const speechSpeedInput = document.getElementById('speech-speed');
     const speedLabel = document.getElementById('speed-label');
-    const apiKeyInput = document.getElementById('api-key-input');
-    const saveApiKeyBtn = document.getElementById('save-api-key-btn');
-    const apiKeyStatus = document.getElementById('api-key-status');
 
     // Stats Elements
     const sessionTime = document.getElementById('session-time');
@@ -123,45 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // --- Dynamic API Key Management ---
-    async function loadApiKeyStatus() {
-        try {
-            const res = await fetch('/settings/api_key');
-            const data = await res.json();
-            if (data.configured) {
-                apiKeyStatus.textContent = `Active: ${data.masked}`;
-                apiKeyStatus.style.color = 'var(--accent)';
-            } else {
-                apiKeyStatus.textContent = "Not configured (Using fallback)";
-                apiKeyStatus.style.color = 'var(--text-secondary)';
-            }
-        } catch (err) {
-            console.error("Failed to load key status:", err);
-        }
-    }
-
-    saveApiKeyBtn.addEventListener('click', async () => {
-        const key = apiKeyInput.value.trim();
-        if (!key) return alert("Please enter a valid API key.");
-
-        try {
-            const res = await fetch('/settings/api_key', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ api_key: key })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-                apiKeyInput.value = '';
-                apiKeyStatus.textContent = "API Key saved successfully!";
-                apiKeyStatus.style.color = 'var(--accent)';
-                setTimeout(loadApiKeyStatus, 2000);
-            }
-        } catch (err) {
-            console.error("Failed to save key:", err);
-            alert("Error saving API Key.");
-        }
-    });
 
     // --- Accessibility Theme Toggling ---
     highContrastToggle.addEventListener('change', () => {
@@ -274,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keyboard Hotkey (Spacebar to start/stop mic, Esc to pause TTS)
     window.addEventListener('keydown', (e) => {
         // Skip hotkeys if user is currently typing in the input box
-        if (document.activeElement === userInput || document.activeElement === apiKeyInput) {
+        if (document.activeElement === userInput) {
             return;
         }
 
@@ -727,5 +685,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load configurations
     loadConversations();
-    loadApiKeyStatus();
 });

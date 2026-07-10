@@ -1,10 +1,32 @@
 import os
+import re
 from gtts import gTTS
 from openai import OpenAI
 from dotenv import load_dotenv
 import uuid
 
 load_dotenv()
+
+def clean_text_for_speech(text):
+    """
+    Strips markdown formatting, HTML tags, list bullets, and emojis
+    to make text-to-speech sound clean and professional.
+    """
+    # Remove HTML tags
+    clean = re.sub(r'<[^>]*>', '', text)
+    # Remove markdown bold, italic, headers, inline code
+    clean = re.sub(r'\*\*|__|\*|_|~~|`|#+', '', clean)
+    # Convert markdown links to plain text: [Link text](url) -> Link text
+    clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', clean)
+    # Remove bullet points at start of lines
+    clean = re.sub(r'^[ \t]*[-\*\+]+[ \t]+', '', clean, flags=re.MULTILINE)
+    # Remove table separators
+    clean = re.sub(r'\|', ' ', clean)
+    # Remove emojis
+    clean = re.sub(r'[\u2600-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]', '', clean)
+    # Collapse multiple whitespace
+    clean = re.sub(r'\s+', ' ', clean).strip()
+    return clean
 
 def text_to_speech(text, folder='static/audio'):
     """
@@ -17,6 +39,11 @@ def text_to_speech(text, folder='static/audio'):
     filename = f"response_{uuid.uuid4().hex}.mp3"
     filepath = os.path.join(folder, filename)
     
+    # Clean text to prevent reading symbols out loud
+    cleaned_text = clean_text_for_speech(text)
+    if not cleaned_text:
+        cleaned_text = "I have generated a response for you."
+    
     from utils.db import get_setting
     api_key = get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
     
@@ -27,7 +54,7 @@ def text_to_speech(text, folder='static/audio'):
             response = client.audio.speech.create(
                 model="tts-1",
                 voice="nova", # Professional "Alexa" like voice (Nova or Shimmer are good)
-                input=text[:4000] # OpenAI limit
+                input=cleaned_text[:4000] # OpenAI limit
             )
             response.stream_to_file(filepath)
             return f"/static/audio/{filename}"
@@ -36,7 +63,7 @@ def text_to_speech(text, folder='static/audio'):
 
     # Fallback to gTTS (Free/Basic)
     try:
-        tts = gTTS(text=text, lang='en')
+        tts = gTTS(text=cleaned_text, lang='en')
         tts.save(filepath)
         return f"/static/audio/{filename}"
     except Exception as e:
