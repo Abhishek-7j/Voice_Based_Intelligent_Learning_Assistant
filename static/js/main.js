@@ -59,11 +59,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioBtnPause = document.getElementById('audio-btn-pause');
     const audioBtnStop = document.getElementById('audio-btn-stop');
 
+    // Accessibility Elements
+    const highContrastToggle = document.getElementById('high-contrast-toggle');
+    const hotwordToggle = document.getElementById('hotword-toggle');
+    const speechSpeedInput = document.getElementById('speech-speed');
+    const speedLabel = document.getElementById('speed-label');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+    const apiKeyStatus = document.getElementById('api-key-status');
+
+    // Stats Elements
+    const sessionTime = document.getElementById('session-time');
+    const sessionQueries = document.getElementById('session-queries');
+
     let currentMode = 'Teacher';
     let currentConversationId = null;
     let isRecording = false;
     let webcamStream = null;
     let currentUploadedImageBase64 = null;
+
+    // Study Stats State
+    let queryCount = 0;
+    let startTime = Date.now();
+
+    // Timer logic
+    setInterval(() => {
+        const elapsedSecs = Math.floor((Date.now() - startTime) / 1000);
+        const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, '0');
+        const secs = String(elapsedSecs % 60).padStart(2, '0');
+        sessionTime.textContent = `${mins}:${secs}`;
+    }, 1000);
 
     // --- Speech Recognition ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -84,6 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
             isRecording = false;
             micBtn.classList.remove('recording');
             voiceVisualizer.style.display = 'none';
+            // If hotword activation is checked, restart listening for hotword
+            if (hotwordToggle.checked && hotwordRecognition && isListeningForHotword) {
+                try {
+                    hotwordRecognition.start();
+                } catch(e) {}
+            }
         };
 
         recognition.onresult = (event) => {
@@ -91,6 +122,172 @@ document.addEventListener('DOMContentLoaded', () => {
             handleSendMessage();
         };
     }
+
+    // --- Dynamic API Key Management ---
+    async function loadApiKeyStatus() {
+        try {
+            const res = await fetch('/settings/api_key');
+            const data = await res.json();
+            if (data.configured) {
+                apiKeyStatus.textContent = `Active: ${data.masked}`;
+                apiKeyStatus.style.color = 'var(--accent)';
+            } else {
+                apiKeyStatus.textContent = "Not configured (Using fallback)";
+                apiKeyStatus.style.color = 'var(--text-secondary)';
+            }
+        } catch (err) {
+            console.error("Failed to load key status:", err);
+        }
+    }
+
+    saveApiKeyBtn.addEventListener('click', async () => {
+        const key = apiKeyInput.value.trim();
+        if (!key) return alert("Please enter a valid API key.");
+
+        try {
+            const res = await fetch('/settings/api_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: key })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                apiKeyInput.value = '';
+                apiKeyStatus.textContent = "API Key saved successfully!";
+                apiKeyStatus.style.color = 'var(--accent)';
+                setTimeout(loadApiKeyStatus, 2000);
+            }
+        } catch (err) {
+            console.error("Failed to save key:", err);
+            alert("Error saving API Key.");
+        }
+    });
+
+    // --- Accessibility Theme Toggling ---
+    highContrastToggle.addEventListener('change', () => {
+        if (highContrastToggle.checked) {
+            document.body.classList.add('theme-high-contrast');
+            localStorage.setItem('high-contrast', 'enabled');
+        } else {
+            document.body.classList.remove('theme-high-contrast');
+            localStorage.setItem('high-contrast', 'disabled');
+        }
+    });
+
+    if (localStorage.getItem('high-contrast') === 'enabled') {
+        highContrastToggle.checked = true;
+        document.body.classList.add('theme-high-contrast');
+    }
+
+    // Speed Slider
+    speechSpeedInput.addEventListener('input', () => {
+        const rate = speechSpeedInput.value;
+        speedLabel.textContent = rate;
+        ttsPlayer.playbackRate = parseFloat(rate);
+    });
+
+    // --- Hands-Free Trigger (Hotword) Logic ---
+    let hotwordRecognition = null;
+    let isListeningForHotword = false;
+
+    function initHotwordRecognition() {
+        if (!SpeechRecognition) return;
+        hotwordRecognition = new SpeechRecognition();
+        hotwordRecognition.continuous = true;
+        hotwordRecognition.interimResults = true;
+        hotwordRecognition.lang = 'en-US';
+
+        hotwordRecognition.onresult = (event) => {
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcript = event.results[i][0].transcript.toLowerCase().trim();
+                if (transcript.includes("hey assistant") || transcript.includes("assistant")) {
+                    playChime();
+                    isListeningForHotword = false;
+                    hotwordRecognition.stop();
+                    setTimeout(() => {
+                        if (recognition) {
+                            try {
+                                recognition.start();
+                            } catch(e) {}
+                        }
+                    }, 400);
+                    break;
+                }
+            }
+        };
+
+        hotwordRecognition.onend = () => {
+            if (hotwordToggle.checked && !isRecording) {
+                try {
+                    hotwordRecognition.start();
+                } catch(e) {}
+            }
+        };
+    }
+
+    function playChime() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            // Double high chime
+            osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+            gain.gain.setValueAtTime(0.08, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+            
+            setTimeout(() => {
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+                gain2.gain.setValueAtTime(0.08, ctx.currentTime);
+                osc2.start();
+                osc2.stop(ctx.currentTime + 0.12);
+            }, 150);
+        } catch (err) {
+            console.error("Audio Context Chime Error:", err);
+        }
+    }
+
+    hotwordToggle.addEventListener('change', () => {
+        if (hotwordToggle.checked) {
+            if (!hotwordRecognition) initHotwordRecognition();
+            isListeningForHotword = true;
+            try {
+                hotwordRecognition.start();
+            } catch(e) {}
+        } else {
+            isListeningForHotword = false;
+            if (hotwordRecognition) {
+                try {
+                    hotwordRecognition.stop();
+                } catch(e) {}
+            }
+        }
+    });
+
+    // Keyboard Hotkey (Spacebar to start/stop mic, Esc to pause TTS)
+    window.addEventListener('keydown', (e) => {
+        // Skip hotkeys if user is currently typing in the input box
+        if (document.activeElement === userInput || document.activeElement === apiKeyInput) {
+            return;
+        }
+
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (recognition) {
+                isRecording ? recognition.stop() : recognition.start();
+            }
+        } else if (e.code === 'Escape') {
+            e.preventDefault();
+            ttsPlayer.pause();
+        }
+    });
 
     // --- Image Preview / Handling ---
     imageUploadTrigger.addEventListener('click', () => {
@@ -158,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userInput.value = '';
         appendMessage('user', textToSend);
         
-        // If there was an image, render it locally in the chat feed
+        // Render image in chat feed locally
         if (imageToSend) {
             const chatImgWrapper = document.createElement('div');
             chatImgWrapper.className = 'message user chat-inline-img-wrapper';
@@ -179,6 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         clearImagePreview();
         thinkingIndicator.style.display = 'block';
+
+        // Increment stats query count
+        queryCount++;
+        sessionQueries.textContent = queryCount;
 
         try {
             const selectedVoice = voiceSelect.value;
@@ -208,6 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 appendMessage('ai', data.response);
                 if (data.audio_url && autoplayToggle.checked) {
                     ttsPlayer.src = data.audio_url;
+                    // Apply current playback speed rate
+                    ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
                     ttsPlayer.play();
                 }
                 loadConversations(); // Reload sidebar sessions
@@ -460,6 +663,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Audio Control Widget Actions ---
     audioBtnPause.addEventListener('click', () => {
         if (ttsPlayer.paused) {
+            // Apply speed rate on resume
+            ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
             ttsPlayer.play();
         } else {
             ttsPlayer.pause();
@@ -474,6 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     audioBtnRetell.addEventListener('click', () => {
         ttsPlayer.currentTime = 0;
+        ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
         ttsPlayer.play();
     });
 
@@ -519,6 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Export Handler
     exportHistoryBtn.addEventListener('click', exportHistory);
 
-    // Initial Load
+    // Initial load configurations
     loadConversations();
+    loadApiKeyStatus();
 });

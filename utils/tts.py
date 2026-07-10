@@ -17,7 +17,8 @@ def text_to_speech(text, folder='static/audio'):
     filename = f"response_{uuid.uuid4().hex}.mp3"
     filepath = os.path.join(folder, filename)
     
-    api_key = os.getenv("OPENAI_API_KEY")
+    from utils.db import get_setting
+    api_key = get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
     
     # Try OpenAI TTS for Professional "Alexa" feel
     if api_key and api_key != "your_openai_api_key_here":

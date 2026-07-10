@@ -111,7 +111,8 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     Generates a professional, AI-companion style response.
     Supports Vision model payloads if image_data (base64) is provided.
     """
-    api_key = os.getenv("OPENAI_API_KEY")
+    from utils.db import get_setting
+    api_key = get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
     has_image = image_data is not None
     
     if not api_key or api_key == "your_openai_api_key_here":

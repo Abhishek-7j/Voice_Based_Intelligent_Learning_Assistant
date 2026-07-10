@@ -31,6 +31,27 @@ def init_db():
             FOREIGN KEY (conversation_id) REFERENCES conversations (id)
         )
     ''')
+    # Settings table
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def get_setting(key, default=None):
+    conn = get_db_connection()
+    res = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    if res:
+        return res['value']
+    return default
+
+def set_setting(key, value):
+    conn = get_db_connection()
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
 
@@ -68,6 +89,5 @@ def delete_conversation(conv_id):
     conn.commit()
     conn.close()
 
-# Initialize on import
-if not os.path.exists(DB_PATH):
-    init_db()
+# Always run init_db to ensure settings table is created if file already exists
+init_db()

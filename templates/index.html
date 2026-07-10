@@ -43,7 +43,19 @@
                     <div class="no-history-msg">No recent chats</div>
                 </div>
 
-                <div class="section-label">Settings</div>
+                <div class="section-label">Study Stats</div>
+                <div class="stats-panel">
+                    <div class="stat-row">
+                        <span>⏱️ Session Duration</span>
+                        <span id="session-time">00:00</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>💬 Questions Asked</span>
+                        <span id="session-queries">0</span>
+                    </div>
+                </div>
+
+                <div class="section-label">Settings & Keys</div>
                 <div class="settings-list">
                     <div class="setting-item">
                         <span>Autoplay Voice</span>
@@ -62,6 +74,37 @@
                             <option value="fable">Fable (Warm)</option>
                             <option value="onyx">Onyx (Masculine)</option>
                         </select>
+                    </div>
+                    <!-- Database API Key Management -->
+                    <div class="setting-item flex-col">
+                        <span>OpenAI API Key</span>
+                        <div class="api-key-input-wrapper">
+                            <input type="password" id="api-key-input" class="custom-select" placeholder="Enter API Key...">
+                            <button id="save-api-key-btn" class="btn-api-save" title="Save API Key"><i class="fas fa-save"></i></button>
+                        </div>
+                        <span id="api-key-status" class="api-key-status-label">Checking configuration...</span>
+                    </div>
+                </div>
+
+                <div class="section-label">Accessibility Tools</div>
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <span>High Contrast Mode</span>
+                        <label class="switch">
+                            <input type="checkbox" id="high-contrast-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <span>Hands-Free Activation</span>
+                        <label class="switch">
+                            <input type="checkbox" id="hotword-toggle" title="Listen for 'Hey Assistant' voice trigger">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-col">
+                        <span>Reading Speed (<span id="speed-label">1.0</span>x)</span>
+                        <input type="range" id="speech-speed" min="0.5" max="2.0" step="0.1" value="1.0" class="slider-range">
                     </div>
                 </div>
             </div>

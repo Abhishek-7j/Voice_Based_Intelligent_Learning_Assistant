@@ -5,7 +5,7 @@ import uuid
 from dotenv import load_dotenv
 from utils.llm import get_ai_response
 from utils.tts import text_to_speech
-from utils.db import save_message, get_history, get_all_conversations, delete_conversation, init_db
+from utils.db import save_message, get_history, get_all_conversations, delete_conversation, init_db, get_setting, set_setting
 
 load_dotenv()
 
@@ -15,6 +15,25 @@ CORS(app)
 
 # Ensure DB is initialized
 init_db()
+
+@app.route('/settings/api_key', methods=['GET'])
+def get_api_key_status():
+    key = get_setting('openai_api_key') or os.getenv("OPENAI_API_KEY")
+    configured = False
+    masked = ""
+    if key and key != "your_openai_api_key_here":
+        configured = True
+        masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "Configured"
+    return jsonify({'configured': configured, 'masked': masked})
+
+@app.route('/settings/api_key', methods=['POST'])
+def save_api_key():
+    data = request.json
+    key = data.get('api_key', '').strip()
+    if not key:
+        return jsonify({'error': 'API key cannot be empty'}), 400
+    set_setting('openai_api_key', key)
+    return jsonify({'status': 'success', 'message': 'API Key updated successfully'})
 
 @app.route('/')
 def index():

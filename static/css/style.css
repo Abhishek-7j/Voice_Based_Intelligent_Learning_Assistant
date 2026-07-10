@@ -847,3 +847,109 @@ input:checked + .slider:before { transform: translateX(20px); }
 .audio-control-btn:active {
     transform: scale(0.95);
 }
+
+/* Stats Panel */
+.stats-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+/* API Key Input Wrapper */
+.api-key-input-wrapper {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+}
+
+.btn-api-save {
+    background: var(--accent);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: 0.2s;
+}
+
+.btn-api-save:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+.api-key-status-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Range Slider Styling */
+.slider-range {
+    width: 100%;
+    background: #3c4043;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+/* High Contrast Mode Theme rules */
+body.theme-high-contrast {
+    --bg-dark: #000000;
+    --bg-sidebar: #050505;
+    --card-bg: #111111;
+    --text-primary: #ffff00 !important; /* High contrast yellow */
+    --text-secondary: #ffffff !important;
+    --accent: #ffff00;
+    --border-color: #ffffff;
+    --user-msg: #222222;
+    --ai-msg: #000000;
+}
+
+body.theme-high-contrast * {
+    border-color: #ffffff !important;
+}
+
+body.theme-high-contrast .message {
+    border: 2px solid #ffffff !important;
+    font-size: 1.25rem !important; /* Increased font size for low-vision accessibility */
+    color: #ffffff !important;
+}
+
+body.theme-high-contrast .message.ai {
+    color: #ffff00 !important;
+}
+
+body.theme-high-contrast input, 
+body.theme-high-contrast button, 
+body.theme-high-contrast select {
+    border: 2px solid #ffffff !important;
+    color: #ffffff !important;
+    background: #000000 !important;
+    font-size: 1.1rem !important;
+}
+
+body.theme-high-contrast .prompt-chip {
+    background: #000000 !important;
+    color: #ffff00 !important;
+    border: 2px solid #ffffff !important;
+}
+
+body.theme-high-contrast .sidebar {
+    background: #000000 !important;
+}
