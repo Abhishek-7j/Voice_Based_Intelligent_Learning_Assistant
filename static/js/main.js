@@ -365,6 +365,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentConversationId = data.conversation_id;
                 }
                 appendMessage('ai', data.response);
+
+                // Cache conversation history locally
+                if (currentConversationId) {
+                    const cachedKey = `cached_history_${currentConversationId}`;
+                    let localHistory = [];
+                    const existing = localStorage.getItem(cachedKey);
+                    if (existing) {
+                        try { localHistory = JSON.parse(existing); } catch(e) {}
+                    }
+                    localHistory.push({ role: 'user', content: textToSend });
+                    localHistory.push({ role: 'ai', content: data.response });
+                    localStorage.setItem(cachedKey, JSON.stringify(localHistory));
+                }
+
                 if (data.audio_url && autoplayToggle.checked) {
                     ttsPlayer.src = data.audio_url;
                     // Apply current playback speed rate
@@ -382,44 +396,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Sidebar Session Loading ---
     async function loadConversations() {
+        let conversations = [];
         try {
             const response = await fetch('/history');
-            const conversations = await response.json();
-
-            historyList.innerHTML = '';
-            if (conversations.length === 0) {
-                historyList.innerHTML = '<div class="no-history-msg">No recent chats</div>';
-                return;
-            }
-
-            conversations.forEach(conv => {
-                const item = document.createElement('div');
-                item.className = 'history-item';
-                if (conv.id === currentConversationId) {
-                    item.classList.add('active');
-                }
-                item.dataset.id = conv.id;
-
-                const titleSpan = document.createElement('span');
-                titleSpan.className = 'history-item-title';
-                titleSpan.textContent = conv.title || "Chat Session";
-                titleSpan.addEventListener('click', () => selectConversation(conv.id, conv.mode));
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'history-item-delete';
-                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
-                deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteConversation(conv.id);
-                });
-
-                item.appendChild(titleSpan);
-                item.appendChild(deleteBtn);
-                historyList.appendChild(item);
-            });
+            conversations = await response.json();
+            // Cache conversations list
+            localStorage.setItem('cached_conversations', JSON.stringify(conversations));
         } catch (err) {
-            console.error("Failed to load conversations history:", err);
+            console.warn("Failed to load conversations from server, attempting local storage fallback:", err);
+            const cached = localStorage.getItem('cached_conversations');
+            if (cached) {
+                try { conversations = JSON.parse(cached); } catch(e) {}
+            }
         }
+
+        historyList.innerHTML = '';
+        if (conversations.length === 0) {
+            historyList.innerHTML = '<div class="no-history-msg">No recent chats</div>';
+            return;
+        }
+
+        conversations.forEach(conv => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            if (conv.id === currentConversationId) {
+                item.classList.add('active');
+            }
+            item.dataset.id = conv.id;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'history-item-title';
+            titleSpan.textContent = conv.title || "Chat Session";
+            titleSpan.addEventListener('click', () => selectConversation(conv.id, conv.mode));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'history-item-delete';
+            deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteConversation(conv.id);
+            });
+
+            item.appendChild(titleSpan);
+            item.appendChild(deleteBtn);
+            historyList.appendChild(item);
+        });
     }
 
     async function selectConversation(convId, mode) {
@@ -448,35 +469,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Load messages
+        let messages = [];
         try {
             thinkingIndicator.style.display = 'block';
             const response = await fetch(`/history/${convId}`);
-            const messages = await response.json();
-            
-            // Clear current messages
-            chatHistory.innerHTML = '';
-
-            messages.forEach(msg => {
-                appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content);
-            });
+            messages = await response.json();
+            // Cache individual chat history
+            localStorage.setItem(`cached_history_${convId}`, JSON.stringify(messages));
         } catch (err) {
-            console.error("Failed to fetch messages for session:", err);
+            console.warn("Failed to fetch messages for session from server, attempting local storage fallback:", err);
+            const cached = localStorage.getItem(`cached_history_${convId}`);
+            if (cached) {
+                try { messages = JSON.parse(cached); } catch(e) {}
+            }
         } finally {
             thinkingIndicator.style.display = 'none';
         }
+
+        // Clear current messages
+        chatHistory.innerHTML = '';
+        messages.forEach(msg => {
+            appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content);
+        });
     }
 
     async function deleteConversation(convId) {
         if (!confirm("Are you sure you want to delete this chat session?")) return;
         try {
             await fetch(`/clear/${convId}`, { method: 'POST' });
-            if (currentConversationId === convId) {
-                startNewChat();
-            }
-            loadConversations();
         } catch (err) {
-            console.error("Failed to delete conversation:", err);
+            console.warn("Could not delete session from server:", err);
         }
+
+        // Remove from local cache
+        localStorage.removeItem(`cached_history_${convId}`);
+        const cached = localStorage.getItem('cached_conversations');
+        if (cached) {
+            try {
+                let conversations = JSON.parse(cached);
+                conversations = conversations.filter(c => c.id !== convId);
+                localStorage.setItem('cached_conversations', JSON.stringify(conversations));
+            } catch(e) {}
+        }
+
+        if (currentConversationId === convId) {
+            startNewChat();
+        }
+        loadConversations();
     }
 
     function startNewChat() {
@@ -685,4 +724,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load configurations
     loadConversations();
+
+    // --- Register Service Worker ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('ServiceWorker registered with scope: ', reg.scope))
+                .catch(err => console.error('ServiceWorker registration failed: ', err));
+        });
+    }
+
+    // --- PWA Installation Logic ---
+    const installAppBtn = document.getElementById('install-app-btn');
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome from automatically showing the prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        // Update UI to show the install button
+        if (installAppBtn) {
+            installAppBtn.style.display = 'block';
+        }
+    });
+
+    if (installAppBtn) {
+        installAppBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            // Show the prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to install prompt: ${outcome}`);
+            // We've used the prompt, and can't use it again, discard it
+            deferredPrompt = null;
+            // Hide the install button
+            installAppBtn.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('appinstalled', () => {
+        console.log('PWA application was installed successfully.');
+        if (installAppBtn) {
+            installAppBtn.style.display = 'none';
+        }
+    });
 });

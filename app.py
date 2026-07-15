@@ -35,6 +35,17 @@ def save_api_key():
     set_setting('openai_api_key', key)
     return jsonify({'status': 'success', 'message': 'API Key updated successfully'})
 
+@app.route('/service-worker.js')
+def service_worker():
+    response = app.send_static_file('js/service-worker.js')
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Content-Type'] = 'application/javascript'
+    return response
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
+
 @app.route('/')
 def index():
     return render_template('index.html')

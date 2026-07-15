@@ -1,0 +1,18 @@
+{
+  "name": "AI Mentor Learning Assistant",
+  "short_name": "AI Mentor",
+  "description": "Interactive voice-based intelligent learning companion.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0e12",
+  "theme_color": "#a155e8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

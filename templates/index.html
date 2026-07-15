@@ -12,6 +12,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI Mentor">
+    <link rel="apple-touch-icon" href="/static/logo.jpg">
 </head>
 <body class="theme-dark">
     <div class="app-wrapper">
@@ -101,10 +108,13 @@
             </div>
 
             <div class="sidebar-footer">
+                <button id="install-app-btn" class="btn btn-outline-export" style="display: none; margin-bottom: 8px; border-color: var(--accent); color: var(--accent);">
+                    <i class="fas fa-download"></i> Download App
+                </button>
                 <button id="export-history-btn" class="btn btn-outline-export">
                     <i class="fas fa-file-export"></i> Export Chats
                 </button>
-                <p class="sidebar-version">v1.3.0 • AI Vision Enabled</p>
+                <p class="sidebar-version">v1.4.0 • PWA Installer Enabled</p>
             </div>
         </aside>
 

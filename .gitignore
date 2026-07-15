@@ -20,3 +20,4 @@ Thumbs.db
 # Project generated audio files
 static/audio/*.mp3
 uploads/
+scratch/
