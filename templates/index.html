@@ -42,6 +42,7 @@
                     <button class="mode-btn active" data-mode="Teacher"><i class="fas fa-graduation-cap"></i> Teacher</button>
                     <button class="mode-btn" data-mode="Coach"><i class="fas fa-fire"></i> Coach</button>
                     <button class="mode-btn" data-mode="Creative"><i class="fas fa-paint-brush"></i> Creative</button>
+                    <button class="mode-btn" data-mode="Quiz"><i class="fas fa-tasks"></i> Quiz Mode</button>
                 </div>
 
                 <div class="section-label">Recent Chats</div>
@@ -59,6 +60,28 @@
                     <div class="stat-row">
                         <span>💬 Questions Asked</span>
                         <span id="session-queries">0</span>
+                    </div>
+                </div>
+
+                <div class="section-label">Revision Flashcards</div>
+                <div class="flashcard-panel">
+                    <div class="flashcard" id="flashcard">
+                        <div class="flashcard-inner">
+                            <div class="flashcard-front">
+                                <span class="flashcard-category" id="card-category">Science</span>
+                                <p class="flashcard-text" id="card-front-text">Superposition</p>
+                                <span class="flashcard-action">Tap to Flip</span>
+                            </div>
+                            <div class="flashcard-back">
+                                <p class="flashcard-text" id="card-back-text">A principle of quantum mechanics where a particle exists in multiple states (0 and 1) simultaneously until measured.</p>
+                                <span class="flashcard-action">Tap to Flip</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flashcard-controls">
+                        <button id="prev-card-btn" class="btn-card-nav" title="Previous Card"><i class="fas fa-chevron-left"></i></button>
+                        <span id="card-indicator">1 / 5</span>
+                        <button id="next-card-btn" class="btn-card-nav" title="Next Card"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
 

@@ -722,6 +722,80 @@ document.addEventListener('DOMContentLoaded', () => {
     // Export Handler
     exportHistoryBtn.addEventListener('click', exportHistory);
 
+    // --- Visual Revision Flashcards Deck ---
+    const flashcardDeck = [
+        {
+            category: "Science",
+            term: "Superposition",
+            definition: "A principle of quantum mechanics where a particle exists in multiple states (0 and 1) simultaneously until measured."
+        },
+        {
+            category: "Coding",
+            term: "Recursion",
+            definition: "A programming technique where a function calls itself to break down complex problems into simpler sub-problems."
+        },
+        {
+            category: "Study Skill",
+            term: "Active Recall",
+            definition: "Testing yourself on a topic rather than re-reading notes. Proven to lock concepts into long-term memory."
+        },
+        {
+            category: "History",
+            term: "D-Day Landings",
+            definition: "June 6, 1944: The Allied invasion of Normandy, which marked the beginning of the liberation of Western Europe in WWII."
+        },
+        {
+            category: "Science",
+            term: "Entanglement",
+            definition: "A quantum phenomenon where two linked particles instantaneously affect each other's state regardless of distance."
+        }
+    ];
+
+    let currentCardIndex = 0;
+    const flashcardEl = document.getElementById('flashcard');
+    const cardCategoryEl = document.getElementById('card-category');
+    const cardFrontTextEl = document.getElementById('card-front-text');
+    const cardBackTextEl = document.getElementById('card-back-text');
+    const cardIndicatorEl = document.getElementById('card-indicator');
+    const prevCardBtn = document.getElementById('prev-card-btn');
+    const nextCardBtn = document.getElementById('next-card-btn');
+
+    if (flashcardEl) {
+        flashcardEl.addEventListener('click', () => {
+            flashcardEl.classList.toggle('flipped');
+        });
+    }
+
+    function updateFlashcard() {
+        if (!flashcardEl) return;
+        // Unflip card before updating content
+        flashcardEl.classList.remove('flipped');
+        
+        setTimeout(() => {
+            const card = flashcardDeck[currentCardIndex];
+            cardCategoryEl.textContent = card.category;
+            cardFrontTextEl.textContent = card.term;
+            cardBackTextEl.textContent = card.definition;
+            cardIndicatorEl.textContent = `${currentCardIndex + 1} / ${flashcardDeck.length}`;
+        }, 150); // Small delay to sync with flipping back animation
+    }
+
+    if (prevCardBtn) {
+        prevCardBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentCardIndex = (currentCardIndex - 1 + flashcardDeck.length) % flashcardDeck.length;
+            updateFlashcard();
+        });
+    }
+
+    if (nextCardBtn) {
+        nextCardBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentCardIndex = (currentCardIndex + 1) % flashcardDeck.length;
+            updateFlashcard();
+        });
+    }
+
     // Initial load configurations
     loadConversations();
 

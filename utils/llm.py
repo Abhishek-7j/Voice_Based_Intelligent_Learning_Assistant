@@ -95,7 +95,7 @@ def get_base_fallback_response(user_text, mode):
             f"- Research shows that actively engaging with the topic of **{user_text.split()[-1] if user_text.split() else 'learning'}** improves retention by up to 80%.\n"
             f"- Try breaking your query down into smaller questions (e.g., asking for python code or quantum concepts).")
 
-def get_local_fallback_response(user_text, mode, has_image=False):
+def get_local_fallback_response(user_text, mode, has_image=False, history=[]):
     if has_image:
         image_insight = ("📸 **[AI Vision Analysis]**\n"
                          "I've successfully scanned and processed your uploaded study image!\n"
@@ -105,6 +105,78 @@ def get_local_fallback_response(user_text, mode, has_image=False):
                          "------------------------------------------\n\n")
     else:
         image_insight = ""
+
+    # Special Interactive Quiz Fallback (Offline Mode)
+    if mode == "Quiz":
+        # Find how many quiz questions have already been asked in the chat history
+        # (Looking at assistant replies containing "Question 1", "Question 2", "Question 3")
+        asked_q1 = False
+        asked_q2 = False
+        asked_q3 = False
+        
+        for msg in history:
+            content = msg.get("content", "")
+            if "Question 1" in content:
+                asked_q1 = True
+            if "Question 2" in content:
+                asked_q2 = True
+            if "Question 3" in content:
+                asked_q3 = True
+
+        user_ans = user_text.lower().strip()
+
+        # Step 1: User starts quiz or responds before Q1
+        if not asked_q1:
+            return (image_insight + 
+                    "🎓 **Welcome to the Interactive Study Quiz!**\n\n"
+                    "Let's test your knowledge. Here is your first question:\n\n"
+                    "💡 **Question 1**: What is the approximate speed of light in a vacuum?\n"
+                    "- **a)** 30,000 km/s\n"
+                    "- **b)** 300,000 km/s\n"
+                    "- **c)** 150,000 km/s\n"
+                    "- **d)** 3,000 km/s\n\n"
+                    "*Reply with a, b, c, or d to answer!*")
+
+        # Step 2: Grade Q1 and present Q2
+        if asked_q1 and not asked_q2:
+            is_correct = "b" in user_ans or "300,000" in user_ans
+            grade_msg = "✅ **Correct!** The speed of light is approximately 300,000 kilometers per second (or 3x10^8 m/s)." if is_correct else "❌ **Incorrect!** The correct answer was **b) 300,000 km/s**."
+            
+            return (image_insight + 
+                    f"{grade_msg}\n\n"
+                    "Here is your next challenge:\n\n"
+                    "💡 **Question 2**: Which programmer created the Python programming language in 1991?\n"
+                    "- **a)** Dennis Ritchie\n"
+                    "- **b)** Bjarne Stroustrup\n"
+                    "- **c)** Guido van Rossum\n"
+                    "- **d)** James Gosling\n\n"
+                    "*Reply with a, b, c, or d to answer!*")
+
+        # Step 3: Grade Q2 and present Q3
+        if asked_q2 and not asked_q3:
+            is_correct = "c" in user_ans or "guido" in user_ans or "rossum" in user_ans
+            grade_msg = "✅ **Correct!** Guido van Rossum created Python to be an intuitive, readable language." if is_correct else "❌ **Incorrect!** The correct answer was **c) Guido van Rossum**."
+            
+            return (image_insight + 
+                    f"{grade_msg}\n\n"
+                    "Here is your final challenge:\n\n"
+                    "💡 **Question 3**: Which event triggered the entry of the United States into World War II in December 1941?\n"
+                    "- **a)** The invasion of Poland\n"
+                    "- **b)** The bombing of Pearl Harbor\n"
+                    "- **c)** The Battle of Britain\n"
+                    "- **d)** The D-Day Landings\n\n"
+                    "*Reply with a, b, c, or d to answer!*")
+
+        # Step 4: Grade Q3 and finish
+        if asked_q3:
+            is_correct = "b" in user_ans or "pearl" in user_ans or "harbor" in user_ans
+            grade_msg = "✅ **Correct!** The surprise attack on Pearl Harbor on December 7, 1941, led the US to declare war." if is_correct else "❌ **Incorrect!** The correct answer was **b) The bombing of Pearl Harbor**."
+            
+            return (image_insight + 
+                    f"{grade_msg}\n\n"
+                    "🎉 **Quiz Completed!** You've finished this revision session. "
+                    "Type *'restart'* to play again, or toggle another mode in the sidebar to keep studying!")
+
     return image_insight + get_base_fallback_response(user_text, mode)
 
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
@@ -117,7 +189,7 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     has_image = image_data is not None
     
     if not api_key or api_key == "your_openai_api_key_here":
-        return get_local_fallback_response(user_text, mode, has_image)
+        return get_local_fallback_response(user_text, mode, has_image, history)
 
     try:
         client = OpenAI(api_key=api_key)
@@ -125,7 +197,8 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
         system_prompts = {
             "Teacher": "You are a world-class educational assistant, similar to Google Gemini. You explain complex topics simply, use structured bullet points, and encourage the user to ask follow-up questions.",
             "Coach": "You are a motivational learning coach. You help the user set goals, break down tasks, and stay focused. Your tone is energetic and supportive.",
-            "Creative": "You are a creative brainstorming partner. You help the user think outside the box, generate stories, and explore weird ideas. Your tone is imaginative and slightly informal."
+            "Creative": "You are a creative brainstorming partner. You help the user think outside the box, generate stories, and explore weird ideas. Your tone is imaginative and slightly informal.",
+            "Quiz": "You are a professional educational Quiz Master. Ask the student one clear question at a time on their chosen study topic. Wait for their response, grade it, explain the solution briefly, and then present the next question. Do not list all questions at once."
         }
 
         messages = [
@@ -164,4 +237,4 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error in LLM: {e}")
-        return get_local_fallback_response(user_text, mode, has_image)
+        return get_local_fallback_response(user_text, mode, has_image, history)
