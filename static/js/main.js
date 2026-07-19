@@ -132,6 +132,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    // --- Memory Toggle Listener ---
+    const memoryToggle = document.getElementById('memory-toggle');
+    if (memoryToggle) {
+        if (localStorage.getItem('user-memory') === 'disabled') {
+            memoryToggle.checked = false;
+        }
+        memoryToggle.addEventListener('change', () => {
+            localStorage.setItem('user-memory', memoryToggle.checked ? 'enabled' : 'disabled');
+        });
+    }
+
     // --- Accessibility Theme Toggling ---
     highContrastToggle.addEventListener('change', () => {
         if (highContrastToggle.checked) {
