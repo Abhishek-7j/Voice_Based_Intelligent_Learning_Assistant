@@ -1137,3 +1137,25 @@ body.theme-high-contrast .chip-btn {
     color: #ffff00 !important;
     border: 2px solid #ffffff !important;
 }
+
+/* AI Bot Engine Badge */
+.ai-bot-badge {
+    background: linear-gradient(135deg, rgba(66, 133, 224, 0.2), rgba(168, 85, 247, 0.2));
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.15);
+}
+
+body.theme-high-contrast .ai-bot-badge {
+    background: #000000 !important;
+    color: #00ffff !important;
+    border: 2px solid #00ffff !important;
+}

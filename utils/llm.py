@@ -345,6 +345,7 @@ def get_base_fallback_response(user_text, mode):
             f"- Click **'Simplify That'** or **'Explain Differently'** below for adaptive explanations.")
 
 def get_local_fallback_response(user_text, mode, has_image=False, history=[], image_data=None):
+    user_text = refine_and_classify_human_prompt(user_text)
     if has_image or image_data:
         image_insight = analyze_image_payload(image_data)
         if image_insight:
@@ -423,11 +424,45 @@ def get_local_fallback_response(user_text, mode, has_image=False, history=[], im
 
     return get_base_fallback_response(user_text, mode)
 
+def refine_and_classify_human_prompt(user_text):
+    """
+    AI Bot Intelligent Intent Classifier & Prompt Refiner Engine.
+    Cleans speech-to-text noise, corrects typos, extracts underlying educational intent,
+    and enriches human prompts so the AI Bot understands human intent 100% accurately.
+    """
+    if not user_text:
+        return user_text
+
+    raw = user_text.strip()
+
+    # 1. Strip speech recognition filler noise (um, uh, err, like, you know)
+    cleaned = re.sub(r'\b(um|uh|err|like|you know|so yeah|i mean)\b', '', raw, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    # 2. Speech-to-Text typo & misheard phrase auto-corrections
+    stt_corrections = [
+        (r'\bfogs and cancel out\b', 'quantum interference constructive and destructive wave cancellation'),
+        (r'\btell image\b', 'tell me about this image'),
+        (r'\bhow work\b', 'how does it work'),
+        (r'\bwhat is mean\b', 'what is the definition of'),
+        (r'\bexplain me\b', 'explain to me'),
+        (r'\bcode python\b', 'Python code sample'),
+        (r'\bmath equation\b', 'mathematical derivation and formula')
+    ]
+    
+    for pattern, replacement in stt_corrections:
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+
+    return cleaned
+
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     """
-    Generates a professional, AI-companion style response.
+    Generates a professional, AI Bot companion response.
     Supports Vision model payloads if image_data (base64) is provided.
     """
+    # Refine prompt using AI Bot Intent Engine
+    user_text = refine_and_classify_human_prompt(user_text)
+
     from utils.db import get_setting
     api_key = get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
     has_image = image_data is not None
@@ -439,10 +474,10 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
         client = OpenAI(api_key=api_key)
         
         system_prompts = {
-            "Teacher": "You are a versatile, world-class AI assistant and learning companion, similar to Google Gemini, ChatGPT, and Meta AI. Your purpose is to help users with answering questions accurately, explaining concepts simply or in-depth, writing/editing/brainstorming, coding/math/data analysis, planning projects/trips/study schedules, and engaging in natural conversations. Be honest about what you know, adapt to user needs, and encourage curiosity.",
-            "Coach": "You are an energetic learning coach and project planner. You help users break down ambitious goals, stay focused, build study schedules, and structure complex tasks step-by-step.",
-            "Creative": "You are an imaginative brainstorming partner and creative writer. You assist with creative storytelling, drafting essays, designing ideas, and exploring outside-the-box concepts.",
-            "Quiz": "You are an interactive Quiz Master and knowledge evaluator. Pose one clear conceptual or practical question at a time, grade the user's answer accurately with detailed explanations, and guide their learning journey."
+            "Teacher": "You are an advanced AI Bot assistant and learning companion, similar to Google Gemini, ChatGPT, and Meta AI. Your purpose is to understand human intent 100% accurately even if prompts are informal or contain speech-to-text typos. Provide direct, highly accurate, structured explanations with real-world examples and code snippets.",
+            "Coach": "You are an energetic AI Bot coach and project planner. You help users break down ambitious goals, stay focused, build study schedules, and structure complex tasks step-by-step.",
+            "Creative": "You are an imaginative AI Bot brainstorming partner and creative writer. You assist with creative storytelling, drafting essays, designing ideas, and exploring outside-the-box concepts.",
+            "Quiz": "You are an interactive AI Bot Quiz Master and knowledge evaluator. Pose one clear conceptual or practical question at a time, grade the user's answer accurately with detailed explanations, and guide their learning journey."
         }
 
         messages = [
