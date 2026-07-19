@@ -11,6 +11,22 @@ import urllib.parse
 def get_base_fallback_response(user_text, mode):
     text = user_text.lower().strip()
     
+    # 0. Adaptive Pacing Voice Commands (Section 5.3 & 7.3 Project Report)
+    if any(cmd in text for cmd in ["simplify that", "explain simpler", "explain it simpler", "simpler explanation", "make it simple"]):
+        return ("💡 **Simplified Concept Breakdown**\n\n"
+                "Let's break this down into the simplest terms imaginable:\n\n"
+                "- **The Basic Idea**: Imagine building a house with toy LEGO blocks. Each block is a single building piece (like an atom or a line of code).\n"
+                "- **How it Works**: Instead of building everything at once, we connect one block at a time following simple rules.\n"
+                "- **Why it Matters**: Once you understand the smallest block, the whole big structure makes complete sense!\n\n"
+                "*Would you like to try a quick quiz on this topic to test your understanding?*")
+
+    if any(cmd in text for cmd in ["explain differently", "explain it differently", "different explanation", "another way"]):
+        return ("🔄 **Alternative Analogy & Real-World Perspective**\n\n"
+                "Here is another way to picture this concept using a everyday analogy:\n\n"
+                "- 🪙 **The Coin-Toss Analogy**: Think of a spinning coin. While it's spinning in mid-air, it is neither purely Heads nor Tails—it holds the potential for both at once!\n"
+                "- 🚦 **Traffic Light Analogy**: Think of traffic flowing through a smart signal system. Signals continuously adapt depending on how many cars arrive, optimizing flow in real time.\n\n"
+                "*Does this analogy make the concept clearer? Tell me which part you'd like to explore further!*")
+
     # 1. AI Image Generation Request Detection (ChatGPT / Gemini style)
     img_triggers = ["generate image", "draw", "create image", "create a picture", "make a picture", "show a picture", "picture of", "image of"]
     if any(trigger in text for trigger in img_triggers):

@@ -1097,3 +1097,43 @@ body.theme-high-contrast .btn-card-nav {
     color: #ffffff !important;
     background: #000000 !important;
 }
+
+/* Quick Action Chips Styling (Section 5.3 Project Report) */
+.quick-action-chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.chip-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+}
+
+.chip-btn:hover {
+    background: rgba(66, 133, 224, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 133, 224, 0.2);
+}
+
+body.theme-high-contrast .chip-btn {
+    background: #000000 !important;
+    color: #ffff00 !important;
+    border: 2px solid #ffffff !important;
+}

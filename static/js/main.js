@@ -712,6 +712,55 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecording ? recognition.stop() : recognition.start();
     });
 
+    // --- Adaptive Pacing Quick Action Chips (Section 5.3 & 7.3 Project Report) ---
+    const chipBtns = document.querySelectorAll('.chip-btn');
+    chipBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            if (action === 'simplify') {
+                userInput.value = "Simplify that in simpler terms";
+                handleSendMessage();
+            } else if (action === 'differently') {
+                userInput.value = "Explain that differently using a real-world analogy";
+                handleSendMessage();
+            } else if (action === 'repeat') {
+                if (ttsPlayer && ttsPlayer.src) {
+                    ttsPlayer.currentTime = 0;
+                    ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
+                    ttsPlayer.play();
+                } else {
+                    userInput.value = "Repeat the last answer";
+                    handleSendMessage();
+                }
+            } else if (action === 'quiz') {
+                const quizBtn = document.querySelector('.mode-btn[data-mode="Quiz"]');
+                if (quizBtn) quizBtn.click();
+                userInput.value = "Quiz me";
+                handleSendMessage();
+            }
+        });
+    });
+
+    // --- Screen-Reader & Keyboard Accessibility Shortcuts (Section 5.2 Project Report) ---
+    window.addEventListener('keydown', (e) => {
+        if (e.altKey) {
+            const key = e.key.toLowerCase();
+            if (key === 'm') {
+                e.preventDefault();
+                micBtn.click(); // Alt+M: Toggle Microphone
+            } else if (key === 's') {
+                e.preventDefault();
+                audioBtnStop.click(); // Alt+S: Stop / Silence Audio
+            } else if (key === 'r') {
+                e.preventDefault();
+                audioBtnRetell.click(); // Alt+R: Repeat Last Answer
+            } else if (key === 'k') {
+                e.preventDefault();
+                userInput.focus(); // Alt+K: Focus Search Bar
+            }
+        }
+    });
+
     const imageGenBtn = document.getElementById('image-gen-btn');
     if (imageGenBtn) {
         imageGenBtn.addEventListener('click', () => {
