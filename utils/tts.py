@@ -9,23 +9,54 @@ load_dotenv()
 
 def clean_text_for_speech(text):
     """
-    Strips markdown formatting, HTML tags, list bullets, and emojis
-    to make text-to-speech sound clean and professional.
+    Cleans response text for TTS to ensure short, direct, engaging voice output.
+    Strips out repetitive meta-headers, screen labels, intro tags ("You asked", 
+    "AI Vision Analysis", "Here's an educational insight"), and raw markdown formatting.
     """
-    # Remove HTML tags
-    clean = re.sub(r'<[^>]*>', '', text)
-    # Remove markdown bold, italic, headers, inline code
-    clean = re.sub(r'\*\*|__|\*|_|~~|`|#+', '', clean)
-    # Convert markdown links to plain text: [Link text](url) -> Link text
-    clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', clean)
-    # Remove bullet points at start of lines
-    clean = re.sub(r'^[ \t]*[-\*\+]+[ \t]+', '', clean, flags=re.MULTILINE)
-    # Remove table separators
+    if not text:
+        return ""
+
+    clean = text
+
+    # 1. Remove meta headers, screen tags, and structural intro labels
+    meta_patterns = [
+        r'📸\s*\*?\*?\[?AI Vision Analysis\]?\*?\*?',
+        r'Here is an AI classification report:?',
+        r'##\s*💡\s*AI Learning Assistant',
+        r'##\s*💡\s*Learning Assistant.*',
+        r'You asked:\s*\*?"[^"]*"\*?',
+        r'I can explain core concepts in science, history, coding, or help you brainstorm\.?',
+        r'\*?\*?Here\'s an educational insight on your topic:\*?\*?',
+        r'-\s*\*?\*?Detected Material\*?\*?:?',
+        r'-\s*\*?\*?AI Tutor Advice\*?\*?:?',
+        r'🎓\s*\*?\*?Welcome to the Interactive Study Quiz!\*?\*?',
+        r'Reply with a, b, c, or d to answer!?'
+    ]
+
+    for pattern in meta_patterns:
+        clean = re.sub(pattern, '', clean, flags=re.IGNORECASE)
+
+    # 2. Remove markdown formatting symbols (*, #, `, _, ~)
+    clean = re.sub(r'#{1,6}\s*', '', clean)
+    clean = re.sub(r'\*\*|__|\*|_|~~|`', '', clean)
+
+    # 3. Convert links [text](url) -> text
+    clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', clean)
+
+    # 4. Remove list bullet symbols at line starts
+    clean = re.sub(r'^\s*[-\*\+]\s+', '', clean, flags=re.MULTILINE)
+    clean = re.sub(r'^\s*\d+\.\s+', '', clean, flags=re.MULTILINE)
+
+    # 5. Remove HTML tags and table separators
+    clean = re.sub(r'<[^>]*>', '', clean)
     clean = re.sub(r'\|', ' ', clean)
-    # Remove emojis
+
+    # 6. Remove all emojis so speech doesn't stutter or read out visual icons
     clean = re.sub(r'[\u2600-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]', '', clean)
-    # Collapse multiple whitespace
+
+    # 7. Collapse spacing and normalize
     clean = re.sub(r'\s+', ' ', clean).strip()
+
     return clean
 
 def text_to_speech(text, folder='static/audio'):
