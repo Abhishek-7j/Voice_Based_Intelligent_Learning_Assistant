@@ -4,11 +4,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import re
+
 def get_base_fallback_response(user_text, mode):
     text = user_text.lower()
     
-    # Greetings
-    if any(greet in text for greet in ["hello", "hi", "hey", "sup", "greetings"]):
+    # Greetings (Check with whole-word boundary matches)
+    greetings = ["hello", "hi", "hey", "sup", "greetings"]
+    if any(re.search(r'\b' + re.escape(greet) + r'\b', text) for greet in greetings):
         if mode == "Teacher":
             return ("👋 Hello! I am your AI Learning Companion.\n\n"
                     "How can I help you learn today? Try asking me about:\n"
