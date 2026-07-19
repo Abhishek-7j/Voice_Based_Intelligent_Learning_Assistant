@@ -9,18 +9,25 @@ load_dotenv()
 
 def clean_text_for_speech(text):
     """
-    Cleans response text for TTS to ensure short, direct, engaging voice output.
-    Strips out repetitive meta-headers, screen labels, intro tags ("You asked", 
-    "AI Vision Analysis", "Here's an educational insight"), and raw markdown formatting.
+    Cleans response text for TTS to ensure pure, natural human voice output.
+    Completely strips out image markdown tags (![alt](url)), bracketed headers,
+    small icons, emojis, and structural labels so TTS reads only natural educational text.
     """
     if not text:
         return ""
 
     clean = text
 
-    # 1. Remove meta headers, screen tags, and structural intro labels
+    # 1. Remove markdown image tags ![alt](url) and links [text](url)
+    clean = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', clean)
+    clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', clean)
+
+    # 2. Remove bracketed headers and meta tags like [AI Vision Analysis], [AI Image Generator]
+    clean = re.sub(r'\[[^\]]*\]', '', clean)
+
+    # 3. Remove structural intro labels and screen tags
     meta_patterns = [
-        r'📸\s*\*?\*?\[?AI Vision Analysis\]?\*?\*?',
+        r'📸\s*\*?\*?AI Vision Analysis\*?\*?',
         r'Here is an AI classification report:?',
         r'##\s*💡\s*AI Learning Assistant',
         r'##\s*💡\s*Learning Assistant.*',
@@ -30,31 +37,30 @@ def clean_text_for_speech(text):
         r'-\s*\*?\*?Detected Material\*?\*?:?',
         r'-\s*\*?\*?AI Tutor Advice\*?\*?:?',
         r'🎓\s*\*?\*?Welcome to the Interactive Study Quiz!\*?\*?',
-        r'Reply with a, b, c, or d to answer!?'
+        r'Reply with a, b, c, or d to answer!?',
+        r'Need a visual illustration\?.*',
+        r'Tip: You can ask me to generate images.*'
     ]
 
     for pattern in meta_patterns:
         clean = re.sub(pattern, '', clean, flags=re.IGNORECASE)
 
-    # 2. Remove markdown formatting symbols (*, #, `, _, ~)
+    # 4. Remove markdown formatting symbols (*, #, `, _, ~, |)
     clean = re.sub(r'#{1,6}\s*', '', clean)
     clean = re.sub(r'\*\*|__|\*|_|~~|`', '', clean)
+    clean = re.sub(r'\|', ' ', clean)
 
-    # 3. Convert links [text](url) -> text
-    clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', clean)
-
-    # 4. Remove list bullet symbols at line starts
+    # 5. Remove list bullet symbols at line starts
     clean = re.sub(r'^\s*[-\*\+]\s+', '', clean, flags=re.MULTILINE)
     clean = re.sub(r'^\s*\d+\.\s+', '', clean, flags=re.MULTILINE)
 
-    # 5. Remove HTML tags and table separators
+    # 6. Remove HTML tags
     clean = re.sub(r'<[^>]*>', '', clean)
-    clean = re.sub(r'\|', ' ', clean)
 
-    # 6. Remove all emojis so speech doesn't stutter or read out visual icons
+    # 7. Remove all emojis and small icons so voice never reads icons out loud
     clean = re.sub(r'[\u2600-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]', '', clean)
 
-    # 7. Collapse spacing and normalize
+    # 8. Collapse whitespace and trim
     clean = re.sub(r'\s+', ' ', clean).strip()
 
     return clean

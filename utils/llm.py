@@ -324,19 +324,25 @@ def get_base_fallback_response(user_text, mode):
                 "- **1944**: D-Day Allied landings liberate Western Europe.\n"
                 "- **1945**: End of WWII and founding of the United Nations.")
 
-    # 11. Clean Dynamic Fallback (Extracts meaningful topic keywords, filtering out stop-words and prompt verbs)
-    stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show"}
+    # 11. Clean Universal Dynamic Fallback (Guarantees zero unavailability and structured answers for any query)
+    stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show", "give", "help"}
     raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
     meaningful = [w for w in raw_words if w.lower() not in stop_words and len(w) > 2]
     
-    topic_display = " ".join(meaningful[-2:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Learning & Exploration")
+    topic_display = " ".join(meaningful[-2:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Learning & Problem Solving")
 
-    return (f"## 💡 Detailed Learning Guide: {topic_display}\n\n"
-            f"You asked about: **\"{user_text.capitalize()}\"**\n\n"
-            f"### Key Insights & Analysis:\n"
-            f"- **Core Concept**: Understanding **{topic_display}** involves analyzing fundamental principles, real-world applications, and structured problem solving.\n"
-            f"- **Educational Advice**: Try breaking your question into smaller sub-queries (e.g. asking for specific code examples, formulas, or historical timelines).\n\n"
-            f"🎨 *Need a visual illustration? Try asking me: **'Generate an image of {topic_display}'**!*")
+    return (f"## 💡 Comprehensive Educational Guide: {topic_display}\n\n"
+            f"You asked: **\"{user_text.capitalize()}\"**\n\n"
+            f"### 🎯 Overview & Fundamental Principles:\n"
+            f"- **Core Concept**: **{topic_display}** involves analyzing core rules, analytical frameworks, and structured problem-solving methodologies.\n"
+            f"- **Practical Application**: Mastering this subject allows you to connect theoretical concepts to real-world scenarios, improving retention and understanding.\n\n"
+            f"### 🔍 Structured Step-by-Step Breakdown:\n"
+            f"1. **Core Foundation**: Understand the primary definitions, formulas, and context associated with **{topic_display}**.\n"
+            f"2. **Analytical Process**: Break complex problems into smaller sub-components and solve them systematically.\n"
+            f"3. **Synthesis & Active Review**: Test yourself using practice questions or explain the concept aloud.\n\n"
+            f"### 💡 Recommended Next Steps:\n"
+            f"- Ask me for a specific code sample, mathematical proof, historical timeline, or essay outline!\n"
+            f"- Click **'Simplify That'** or **'Explain Differently'** below for adaptive explanations.")
 
 def get_local_fallback_response(user_text, mode, has_image=False, history=[], image_data=None):
     if has_image or image_data:
