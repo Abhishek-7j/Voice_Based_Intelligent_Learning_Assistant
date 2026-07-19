@@ -91,12 +91,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
 
+    function stopSpeechPlayback() {
+        if (ttsPlayer) {
+            ttsPlayer.pause();
+            ttsPlayer.currentTime = 0;
+        }
+        if (audioControlBar) {
+            audioControlBar.style.display = 'none';
+        }
+    }
+
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
+            stopSpeechPlayback(); // Instantly pause TTS player when user starts mic recording
             isRecording = true;
             micBtn.classList.add('recording');
             voiceVisualizer.style.display = 'flex';
@@ -686,8 +697,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     micBtn.addEventListener('click', () => {
         if (!recognition) return alert("Speech recognition not supported in this browser.");
+        stopSpeechPlayback(); // Instantly stop active TTS when tapping mic
         isRecording ? recognition.stop() : recognition.start();
     });
+
+    const imageGenBtn = document.getElementById('image-gen-btn');
+    if (imageGenBtn) {
+        imageGenBtn.addEventListener('click', () => {
+            const promptVal = prompt("Enter a prompt for AI Image Generation (e.g. 'Milky Way galaxy', 'Quantum computer'):");
+            if (promptVal && promptVal.trim()) {
+                userInput.value = `Generate an image of ${promptVal.trim()}`;
+                handleSendMessage();
+            }
+        });
+    }
 
     // Prompt Chips Initial Binding
     promptChips.forEach(chip => {

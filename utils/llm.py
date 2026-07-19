@@ -6,94 +6,140 @@ load_dotenv()
 
 import re
 
+import urllib.parse
+
 def get_base_fallback_response(user_text, mode):
-    text = user_text.lower()
+    text = user_text.lower().strip()
     
-    # Greetings (Check with whole-word boundary matches)
+    # 1. AI Image Generation Request Detection (ChatGPT / Gemini style)
+    img_triggers = ["generate image", "draw", "create image", "create a picture", "make a picture", "show a picture", "picture of", "image of"]
+    if any(trigger in text for trigger in img_triggers):
+        # Clean prompt
+        prompt = re.sub(r'^(generate|draw|create|make|show)\s+(an?\s+)?(image|picture|photo)\s+(of\s+)?', '', text, flags=re.IGNORECASE).strip()
+        if not prompt:
+            prompt = "a vibrant futuristic AI learning companion in space"
+            
+        encoded = urllib.parse.quote(prompt)
+        img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
+        
+        return (f"## 🎨 AI Image Generator\n\n"
+                f"Here is your AI generated image for **\"{prompt.capitalize()}\"**:\n\n"
+                f"![{prompt}]({img_url})\n\n"
+                f"*Tip: You can ask me to generate images for any topic in science, space, history, or fantasy!*")
+
+    # 2. Greetings (Check with whole-word boundary matches)
     greetings = ["hello", "hi", "hey", "sup", "greetings"]
     if any(re.search(r'\b' + re.escape(greet) + r'\b', text) for greet in greetings):
         if mode == "Teacher":
             return ("👋 Hello! I am your AI Learning Companion.\n\n"
                     "How can I help you learn today? Try asking me about:\n"
-                    "- 🌌 **Quantum Computing**\n"
-                    "- 📚 **Effective Study Tips**\n"
-                    "- 📜 **World War II History**\n"
+                    "- 🌌 **Astronomy & Milky Way Galaxy**\n"
+                    "- 🛡️ **Cybersecurity & Encryption**\n"
+                    "- ⚛️ **Quantum Computing**\n"
                     "- 💻 **Python Code Samples**\n"
-                    "- 🚀 **Creative Space Stories**")
+                    "- 🎨 **Generate AI Images**")
         elif mode == "Coach":
             return ("🔥 Hey there! Ready to crush your learning goals today?\n\n"
-                    "Remember: *consistency is key*. Tell me what you're studying today and let's break it down into manageable tasks!")
+                    "Remember: *consistency is key*. Tell me what topic you're studying today and let's break it down into actionable steps!")
         else:
             return ("✨ Hello explorer! Let's brainstorm something magical today.\n\n"
-                    "What weird ideas or creative stories shall we discuss? I'm ready to write or draw ideas with you!")
-            
-    # Quantum Computing / Physics / Science
-    if any(k in text for k in ["quantum", "physics", "science", "atom", "mechanics"]):
-        return ("## 🌌 Understanding Quantum Computing\n\n"
-                "Quantum computing uses the principles of **quantum mechanics** to process information in ways traditional computers can't.\n\n"
-                "### Key Concepts:\n"
-                "1. **Qubits (Quantum Bits)**: Unlike regular bits (0 or 1), qubits can exist as 0, 1, or *both at the same time* due to **superposition**.\n"
-                "2. **Entanglement**: Qubits can become linked, where the state of one instantly influences another, regardless of distance.\n"
-                "3. **Quantum Interference**: Used to amplify correct paths and cancel out incorrect ones to speed up calculation.\n\n"
-                "*Would you like me to explain this using a coin-toss analogy?*")
+                    "What ideas, stories, or images shall we create together? Type *'generate image of space'* or ask me a query!")
 
-    # Study Tips / Exams
+    # 3. Cybersecurity & Information Security
+    if any(k in text for k in ["cybersecurity", "security", "encryption", "hacker", "firewall", "phishing", "malware", "network"]):
+        return ("## 🛡️ Fundamentals of Cybersecurity\n\n"
+                "Cybersecurity is the practice of protecting systems, networks, and data from digital attacks.\n\n"
+                "### Core Pillars (The CIA Triad):\n"
+                "1. **Confidentiality**: Ensuring data is accessible only to authorized users (e.g. using AES-256 Encryption).\n"
+                "2. **Integrity**: Safeguarding information from being altered or tampered with (e.g. Cryptographic Hashes like SHA-256).\n"
+                "3. **Availability**: Guaranteeing reliable access to data for authorized parties (e.g. DDoS Mitigation).\n\n"
+                "### Real-World Defensive Tools:\n"
+                "- **Firewalls**: Filter incoming and outgoing network traffic based on security rules.\n"
+                "- **Zero-Trust Architecture**: Never trust, always verify every access request.\n"
+                "- **Multi-Factor Authentication (MFA)**: Adds secondary security layers beyond passwords.")
+
+    # 4. Astronomy, Space & Galaxies
+    if any(k in text for k in ["galaxy", "milky way", "astronomy", "space", "planet", "star", "black hole", "cosmos", "universe"]):
+        return ("## 🌌 Astronomy & The Milky Way Galaxy\n\n"
+                "The **Milky Way** is a barred spiral galaxy containing over 100 to 400 billion stars, including our Solar System.\n\n"
+                "### Key Astronomical Facts:\n"
+                "- **Diameter**: Approximately 100,000 light-years across.\n"
+                "- **Galactic Center**: Houses a supermassive black hole named **Sagittarius A*** (4 million solar masses).\n"
+                "- **Stellar Neighborhood**: Our Sun resides in the Orion Arm, orbiting the galactic core once every 230 million years.\n\n"
+                "🎨 *Want to see a visual representation? Ask me to **'generate an image of Milky Way galaxy'**!*")
+
+    # 5. Quantum Computing & Physics
+    if any(k in text for k in ["quantum", "physics", "atom", "mechanics", "qubit", "superposition"]):
+        return ("## ⚛️ Understanding Quantum Computing\n\n"
+                "Quantum computing leverages principles of quantum mechanics to perform complex calculations exponentially faster than classical supercomputers.\n\n"
+                "### Key Principles:\n"
+                "1. **Superposition**: Qubits can exist as 0, 1, or both states simultaneously.\n"
+                "2. **Quantum Entanglement**: Linked qubits instantly influence each other's state across distance.\n"
+                "3. **Quantum Interference**: Amplifies correct computational paths to find global solutions fast.")
+
+    # 6. Biology & Life Sciences
+    if any(k in text for k in ["biology", "dna", "rna", "cell", "photosynthesis", "genetics", "organism"]):
+        return ("## 🧬 Molecular Biology & Genetics\n\n"
+                "Deoxyribonucleic Acid (**DNA**) is the molecule that carries genetic instructions in living organisms.\n\n"
+                "### Structure & Function:\n"
+                "- **Double Helix**: Formed by two anti-parallel strands of nucleotides.\n"
+                "- **Base Pairing**: Adenine (A) pairs with Thymine (T), and Cytosine (C) pairs with Guanine (G).\n"
+                "- **Replication**: DNA unzips to make exact copies during cell division (Mitosis).")
+
+    # 7. Mathematics & Equations
+    if any(k in text for k in ["math", "calculus", "algebra", "geometry", "equation", "formula", "theorem"]):
+        return ("## 📐 Essential Mathematical Principles\n\n"
+                "Mathematics provides the language for modeling physical reality.\n\n"
+                "### Fundamental Formulas:\n"
+                "- **Pythagorean Theorem**: `a² + b² = c²` (Relates sides of a right triangle)\n"
+                "- **Euler's Identity**: `e^(iπ) + 1 = 0` (Connects 5 fundamental constants)\n"
+                "- **Calculus Derivative**: `f'(x) = lim (h->0) [f(x+h) - f(x)] / h` (Measures rate of change)")
+
+    # 8. Study Tips / Exams
     if any(k in text for k in ["study", "exam", "learn", "technique", "tips"]):
-        return ("## 📚 Top 4 Scientific Study Techniques\n\n"
-                "To optimize your learning, try these proven methods:\n\n"
-                "- ⏱️ **The Pomodoro Technique**: Study for 25 minutes, take a 5-minute break. Repeat 4 times, then take a longer break. Prevents mental fatigue.\n"
-                "- 🔄 **Active Recall**: Don't just re-read notes. Test yourself, explain concepts aloud, or write down everything you remember from scratch.\n"
-                "- 🗓️ **Spaced Repetition**: Review information at expanding intervals (1 day, 3 days, 1 week, 1 month) to lock it into long-term memory.\n"
-                "- 💡 **Feynman Technique**: Explain a complex topic to a 5-year-old. Wherever you struggle, go back and fill the gaps in your understanding.")
+        return ("## 📚 Top Scientific Study Techniques\n\n"
+                "- ⏱️ **Pomodoro Method**: 25 mins deep work, 5 mins rest. Prevents burnout.\n"
+                "- 🔄 **Active Recall**: Self-testing locks information into long-term memory faster than passive re-reading.\n"
+                "- 🗓️ **Spaced Repetition**: Reviewing material at expanding intervals (1d, 3d, 1w) maximizes retention.")
 
-    # History / WWII
-    if any(k in text for k in ["history", "world war", "wwii", "ww2"]):
-        return ("## 📜 World War II: Key Milestones\n\n"
-                "World War II (1939–1945) was a global conflict involving two major alliances: the **Allies** and the **Axis**.\n\n"
-                "### Timeline of Events:\n"
-                "| Year | Event | Significance |\n"
-                "|---|---|---|\n"
-                "| **1939** | Invasion of Poland | Start of WWII in Europe. |\n"
-                "| **1941** | Pearl Harbor | US enters the war. |\n"
-                "| **1944** | D-Day Landings | Allied liberation of Western Europe begins. |\n"
-                "| **1945** | Atomic Bombings / Surrender | End of the war. |\n\n"
-                "*Let me know if you want to focus on a specific theatre or battle.*")
-
-    # Code / Python / Programming
-    if any(k in text for k in ["code", "python", "program", "function"]):
-        return ("## 💻 Writing a Python Function\n\n"
-                "Here is an example of a simple Python function that calculates the Fibonacci sequence using recursion with memoization:\n\n"
+    # 9. Code / Python / Programming
+    if any(k in text for k in ["code", "python", "program", "function", "software"]):
+        return ("## 💻 Writing Efficient Python Code\n\n"
+                "Python emphasizes code readability and clean syntax:\n\n"
                 "```python\n"
-                "memo = {}\n"
-                "def fibonacci(n):\n"
-                "    if n in memo:\n"
-                "        return memo[n]\n"
-                "    if n <= 1:\n"
-                "        return n\n"
-                "    memo[n] = fibonacci(n - 1) + fibonacci(n - 2)\n"
+                "def solve_fibonacci(n, memo={}):\n"
+                "    if n in memo: return memo[n]\n"
+                "    if n <= 1: return n\n"
+                "    memo[n] = solve_fibonacci(n - 1, memo) + solve_fibonacci(n - 2, memo)\n"
                 "    return memo[n]\n\n"
-                "# Test the function\n"
-                "print(fibonacci(10)) # Output: 55\n"
+                "print(solve_fibonacci(10)) # Output: 55\n"
                 "```\n\n"
-                "### How it works:\n"
-                "- **Memoization**: Storing results of expensive function calls to speed up execution.\n"
-                "- **Recursion**: A function calling itself to solve smaller sub-problems.")
+                "### Key Concepts:\n"
+                "- **Memoization**: Cache previous results to optimize runtime complexity from O(2^n) to O(n).")
 
-    # Story / Creative
-    if any(k in text for k in ["story", "explorer", "creative", "space"]):
-        return ("## 🚀 The Lost Explorer of Orion's Belt\n\n"
-                "Captain Clara stared at the control panel. The hyperdrive was cold. Outside her window, the dust clouds of the Orion Nebula glowed in cosmic shades of violet and cyan.\n\n"
-                "> \"We are out of range,\" the ship's computer chimed in a robotic Alexa-like voice. \n\n"
-                "But Clara smiled. She hadn't traveled ten light-years just to turn back. Her scanner detected a signal coming from the center of the dust cloud—a rhythmic, intelligent pulse...\n\n"
-                "*What do you think Clara should do next? Go into the dust cloud, or scan for other ships?*")
+    # 10. History / WWII
+    if any(k in text for k in ["history", "world war", "wwii", "ww2"]):
+        return ("## 📜 World War II: Historical Overview\n\n"
+                "World War II (1939–1945) reshaped modern geopolitics and international law.\n\n"
+                "### Timeline of Major Events:\n"
+                "- **1939**: Invasion of Poland triggers war in Europe.\n"
+                "- **1941**: Attack on Pearl Harbor brings the United States into the war.\n"
+                "- **1944**: D-Day Allied landings liberate Western Europe.\n"
+                "- **1945**: End of WWII and founding of the United Nations.")
 
-    # Fallback response (Dynamic response based on user input keywords)
-    return (f"## 💡 AI Learning Assistant\n\n"
-            f"You asked: *\"{user_text}\"*\n\n"
-            f"I can explain core concepts in science, history, coding, or help you brainstorm. \n\n"
-            f"**Here's an educational insight on your topic:**\n"
-            f"- Research shows that actively engaging with the topic of **{user_text.split()[-1] if user_text.split() else 'learning'}** improves retention by up to 80%.\n"
-            f"- Try breaking your query down into smaller questions (e.g., asking for python code or quantum concepts).")
+    # 11. Clean Dynamic Fallback (Extracts meaningful topic keywords, filtering out stop-words)
+    stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those"}
+    raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
+    meaningful = [w for w in raw_words if w.lower() not in stop_words and len(w) > 2]
+    
+    topic_display = " ".join(meaningful[-2:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Learning & Exploration")
+
+    return (f"## 💡 Detailed Learning Guide: {topic_display}\n\n"
+            f"You asked about: **\"{user_text.capitalize()}\"**\n\n"
+            f"### Key Insights & Analysis:\n"
+            f"- **Core Concept**: Understanding **{topic_display}** involves analyzing fundamental principles, real-world applications, and structured problem solving.\n"
+            f"- **Educational Advice**: Try breaking your question into smaller sub-queries (e.g. asking for specific code examples, formulas, or historical timelines).\n\n"
+            f"🎨 *Need a visual illustration? Try asking me: **'Generate an image of {topic_display}'**!*")
 
 def get_local_fallback_response(user_text, mode, has_image=False, history=[]):
     if has_image:

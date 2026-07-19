@@ -42,6 +42,25 @@ def service_worker():
     response.headers['Content-Type'] = 'application/javascript'
     return response
 
+import urllib.parse
+
+@app.route('/generate_image', methods=['POST'])
+def generate_image_route():
+    data = request.json or {}
+    prompt = data.get('prompt', '').strip()
+    if not prompt:
+        return jsonify({'error': 'Prompt is required'}), 400
+    
+    encoded = urllib.parse.quote(prompt)
+    img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
+    
+    return jsonify({
+        'status': 'success',
+        'image_url': img_url,
+        'prompt': prompt,
+        'response': f"## 🎨 AI Image Generator\n\nHere is your generated image for **\"{prompt.capitalize()}\"**:\n\n![{prompt}]({img_url})"
+    })
+
 @app.route('/manifest.json')
 def manifest():
     return app.send_static_file('manifest.json')
