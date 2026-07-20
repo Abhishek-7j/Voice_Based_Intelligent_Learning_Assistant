@@ -324,19 +324,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let activeSessionImageBase64 = null;
+
     async function handleSendMessage() {
         const text = userInput.value.trim();
-        if (!text && !currentUploadedImageBase64) return;
+        
+        // Check if user is asking follow-up about an uploaded image in this session
+        const isAskingAboutImage = /\b(photo|picture|image|that|this|it|describe|tell)\b/i.test(text);
+        let imageToSend = currentUploadedImageBase64;
+        
+        if (!imageToSend && activeSessionImageBase64 && isAskingAboutImage) {
+            imageToSend = activeSessionImageBase64;
+        }
+
+        if (!text && !imageToSend) return;
+
+        if (currentUploadedImageBase64) {
+            activeSessionImageBase64 = currentUploadedImageBase64;
+        }
 
         // Reset text box but keep a copy of values for sending
-        const textToSend = text || (currentUploadedImageBase64 ? "Analyze this uploaded photo." : "");
-        const imageToSend = currentUploadedImageBase64;
+        const textToSend = text || (imageToSend ? "Analyze this uploaded photo." : "");
 
         userInput.value = '';
         appendMessage('user', textToSend);
         
-        // Render image in chat feed locally
-        if (imageToSend) {
+        // Render image in chat feed locally if it's a newly uploaded image
+        if (currentUploadedImageBase64) {
             const chatImgWrapper = document.createElement('div');
             chatImgWrapper.className = 'message user chat-inline-img-wrapper';
             chatImgWrapper.style.padding = '8px';
@@ -344,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chatImgWrapper.style.marginTop = '-12px';
             
             const chatImg = document.createElement('img');
-            chatImg.src = imageToSend;
+            chatImg.src = currentUploadedImageBase64;
             chatImg.style.width = '100%';
             chatImg.style.borderRadius = '8px';
             chatImg.style.border = '1px solid var(--border-color)';
@@ -542,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startNewChat() {
         currentConversationId = null;
+        activeSessionImageBase64 = null;
         chatHistory.innerHTML = `
             <div class="welcome-section" id="welcome-section">
                 <div class="welcome-icon"><i class="fas fa-brain"></i></div>

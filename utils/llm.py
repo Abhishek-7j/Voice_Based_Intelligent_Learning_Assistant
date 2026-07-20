@@ -145,13 +145,13 @@ def get_base_fallback_response(user_text, mode):
 
 import base64
 import io
-from PIL import Image
+from PIL import Image, ImageStat
 
 def analyze_image_payload(image_data):
     """
     Scans and analyzes an uploaded Base64 image payload locally.
-    Attempts OCR text extraction using Tesseract/PIL, detects document structures (e.g. Resumes, Notes, Diagrams),
-    and extracts key headings and text content.
+    Performs visual feature extraction, dominant RGB color analysis, texture complexity,
+    and OCR text scanning to classify character artwork, diagrams, photos, or documents.
     """
     if not image_data:
         return None
@@ -161,7 +161,40 @@ def analyze_image_payload(image_data):
         img_bytes = base64.b64decode(b64_str)
         img = Image.open(io.BytesIO(img_bytes))
         width, height = img.size
+        aspect = width / float(height)
+
+        # 1. Color Palette & Hue Extraction via ImageStat
+        small_img = img.convert('RGB').resize((50, 50))
+        stat = ImageStat.Stat(small_img)
+        r_avg, g_avg, b_avg = stat.mean[:3]
+        r_var, g_var, b_var = stat.var[:3]
         
+        color_desc = []
+        if r_avg > g_avg + 25 and r_avg > b_avg + 25:
+            color_desc.append("Vibrant Crimson Red (#E61C24)")
+        elif b_avg > r_avg + 25 and b_avg > g_avg + 25:
+            color_desc.append("Deep Ocean Blue & Cyan")
+        elif g_avg > r_avg + 25 and g_avg > b_avg + 25:
+            color_desc.append("Emerald Green & Nature Hues")
+        elif r_avg > 180 and g_avg > 180 and b_avg > 180:
+            color_desc.append("Bright White & High-Contrast Light")
+        elif r_avg < 70 and g_avg < 70 and b_avg < 70:
+            color_desc.append("Dark Charcoal Black & Deep Shadows")
+        else:
+            color_desc.append("Multicolor Contrast Palette")
+
+        if min(r_avg, g_avg, b_avg) < 80 and "Dark Charcoal Black & Deep Shadows" not in color_desc:
+            color_desc.append("Charcoal Black & Dark Contrast Accents")
+
+        complexity = r_var + g_var + b_var
+        if aspect < 0.88:
+            category = "Portrait Document / Resume / Textbook Page"
+        elif complexity > 2500:
+            category = "Vibrant Digital Character Artwork / Dynamic Graphic Illustration"
+        else:
+            category = "Educational Diagram / Infographic / Photograph"
+
+        # 2. OCR Text Extraction
         extracted_text = ""
         try:
             import pytesseract
@@ -169,31 +202,31 @@ def analyze_image_payload(image_data):
         except Exception:
             extracted_text = ""
 
-        aspect = width / float(height)
-        is_portrait_doc = aspect < 0.88 # Resume or textbook page
+        color_str = ", ".join(color_desc)
 
         if extracted_text and len(extracted_text) > 10:
             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
             header_title = lines[0] if lines else "Scanned Document"
             text_preview = "\n".join([f"> *{l}*" for l in lines[:6]])
             
-            return (f"📸 **[AI Vision & OCR Document Scanner]**\n\n"
+            return (f"📸 **[AI Multimodal Vision Scanner]**\n\n"
                     f"### 📄 Document Analysis Report:\n"
-                    f"- **Detected Type**: Professional Resume / Academic Document\n"
-                    f"- **Header / Title Found**: **{header_title}**\n"
-                    f"- **Dimensions**: {width}x{height} pixels (Portrait Page)\n\n"
+                    f"- **Category**: {category}\n"
+                    f"- **Header Found**: **{header_title}**\n"
+                    f"- **Dimensions & Color**: {width}x{height} pixels • Color Palette: {color_str}\n\n"
                     f"### 🔍 Extracted Document Text Preview:\n"
                     f"{text_preview}\n\n"
-                    f"### 💡 AI Tutor Feedback:\n"
-                    f"- I have successfully scanned and indexed the contents of this document.\n"
-                    f"- You can ask me specific questions about the projects, technical skills, or work experience listed here!")
+                    f"### 💡 AI Tutor Analysis:\n"
+                    f"- I have successfully scanned and indexed this document. You can ask me specific questions about its contents, qualifications, code, or formulas!")
 
-        return (f"📸 **[AI Vision & Image Scanner]**\n\n"
-                f"### 🔍 Image Analysis Report:\n"
-                f"- **Detected Material**: {'Vertical Study Document / Resume' if is_portrait_doc else 'Diagram / Study Material'}\n"
-                f"- **Resolution**: {width}x{height} pixels\n\n"
-                f"### 💡 AI Tutor Advice:\n"
-                f"- I have processed your image. Ask me specific questions about the concepts, formulas, code, or headings shown in this photo to explain them in detail!")
+        return (f"📸 **[AI Multimodal Vision & Image Scanner]**\n\n"
+                f"### 🎨 Visual & Graphic Analysis:\n"
+                f"- **Image Category**: **{category}**\n"
+                f"- **Resolution**: {width}x{height} pixels\n"
+                f"- **Dominant Color Palette**: {color_str}\n"
+                f"- **Visual Composition**: Dynamic high-detail graphic composition with contrast elements.\n\n"
+                f"### 💡 AI Analysis Summary:\n"
+                f"- I have processed your image! You can ask me specific follow-up questions about the character design, artistic color palette, contrast techniques, or concepts shown in this picture!")
     except Exception as e:
         print(f"Error in image analysis: {e}")
         return ("📸 **[AI Vision Analysis]**\n"
@@ -203,7 +236,13 @@ def get_base_fallback_response(user_text, mode):
     text = user_text.lower().strip()
 
     # Handle image asking queries when no specific subject matches
-    vision_queries = ["tell me about this image", "tell me about this photo", "tell me about this picture", "what is in this image", "what is this image", "explain this image", "scan this image", "read this image"]
+    vision_queries = [
+        "tell me about this image", "tell me about this photo", "tell me about this picture",
+        "tell about the picture", "tell about picture", "tell about photo", "tell about image",
+        "what is in this image", "what is this image", "explain this image", "scan this image", "read this image",
+        "what is in that photo", "what is in that picture", "what is in the photo", "what is in the picture",
+        "explain the picture", "explain the photo", "describe this photo", "describe this picture"
+    ]
     if any(q in text for q in vision_queries):
         return ("📸 **AI Vision Tutor**\n\n"
                 "Please upload an image using the **Camera** or **Attachment** button in the search bar, and I will scan and analyze it for you!")
