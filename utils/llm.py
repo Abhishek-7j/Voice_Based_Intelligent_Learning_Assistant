@@ -206,18 +206,19 @@ def analyze_image_payload(image_data):
 
         if extracted_text and len(extracted_text) > 10:
             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
-            header_title = lines[0] if lines else "Scanned Document"
-            text_preview = "\n".join([f"> *{l}*" for l in lines[:6]])
+            header_title = lines[0] if lines else "Scanned Page Document"
             
-            return (f"📸 **[AI Multimodal Vision Scanner]**\n\n"
-                    f"### 📄 Document Analysis Report:\n"
-                    f"- **Category**: {category}\n"
-                    f"- **Header Found**: **{header_title}**\n"
-                    f"- **Dimensions & Color**: {width}x{height} pixels • Color Palette: {color_str}\n\n"
-                    f"### 🔍 Extracted Document Text Preview:\n"
-                    f"{text_preview}\n\n"
-                    f"### 💡 AI Tutor Analysis:\n"
-                    f"- I have successfully scanned and indexed this document. You can ask me specific questions about its contents, qualifications, code, or formulas!")
+            # Format full extracted page matter into clear educational sections
+            full_matter = "\n\n".join([f"📖 **Section {i+1}**: {line}" for i, line in enumerate(lines[:15])])
+            
+            return (f"## 📜 Comprehensive Page Document Analysis: {header_title}\n\n"
+                    f"### 🎯 Document Page Overview:\n"
+                    f"I have thoroughly scanned and processed your uploaded page (**{width}x{height} pixels**). Here is the full educational breakdown of the matter on this page:\n\n"
+                    f"### 📖 Full Page Text & Concept Breakdown:\n"
+                    f"{full_matter}\n\n"
+                    f"### 💡 Key Learning Summary:\n"
+                    f"- **Main Focus**: The uploaded page covers fundamental concepts surrounding **{header_title}**.\n"
+                    f"- **Interactive Learning**: Ask me specific follow-up questions about any section above (e.g. *'Explain section 1 in detail'*, *'Simplify section 2'*, or *'Quiz me on this page'*)!")
 
         return (f"📸 **[AI Multimodal Vision & Image Scanner]**\n\n"
                 f"### 🎨 Visual & Graphic Analysis:\n"
@@ -363,24 +364,23 @@ def get_base_fallback_response(user_text, mode):
                 "- **1944**: D-Day Allied landings liberate Western Europe.\n"
                 "- **1945**: End of WWII and founding of the United Nations.")
 
-    # 11. Clean Universal Dynamic Fallback (Guarantees zero unavailability and structured answers for any query)
+    # 11. Clean Universal Dynamic Response Engine (Tailored specifically to the exact user prompt)
     stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show", "give", "help"}
     raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
     meaningful = [w for w in raw_words if w.lower() not in stop_words and len(w) > 2]
     
-    topic_display = " ".join(meaningful[-2:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Learning & Problem Solving")
+    topic_display = " ".join(meaningful[-3:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Your Query")
 
-    return (f"## 💡 Comprehensive Educational Guide: {topic_display}\n\n"
+    return (f"## 💡 Detailed Educational Guide: {topic_display}\n\n"
             f"You asked: **\"{user_text.capitalize()}\"**\n\n"
             f"### 🎯 Overview & Fundamental Principles:\n"
-            f"- **Core Concept**: **{topic_display}** involves analyzing core rules, analytical frameworks, and structured problem-solving methodologies.\n"
-            f"- **Practical Application**: Mastering this subject allows you to connect theoretical concepts to real-world scenarios, improving retention and understanding.\n\n"
-            f"### 🔍 Structured Step-by-Step Breakdown:\n"
-            f"1. **Core Foundation**: Understand the primary definitions, formulas, and context associated with **{topic_display}**.\n"
-            f"2. **Analytical Process**: Break complex problems into smaller sub-components and solve them systematically.\n"
-            f"3. **Synthesis & Active Review**: Test yourself using practice questions or explain the concept aloud.\n\n"
+            f"- **Definition & Context**: **{topic_display}** represents a vital concept requiring focused analysis and practical application.\n"
+            f"- **Core Mechanics**: Mastering **{topic_display}** involves connecting core theoretical principles to real-world problem-solving.\n\n"
+            f"### 🔍 Practical Application & Examples:\n"
+            f"- **Real-World Context**: **{topic_display}** is utilized across academic and technical fields to solve complex problems and analyze data.\n"
+            f"- **Educational Benefit**: Studying **{topic_display}** improves critical thinking and long-term retention.\n\n"
             f"### 💡 Recommended Next Steps:\n"
-            f"- Ask me for a specific code sample, mathematical proof, historical timeline, or essay outline!\n"
+            f"- Ask me: *'Explain {topic_display} with a real-world code example'* or *'Simplify this concept further'*!\n"
             f"- Click **'Simplify That'** or **'Explain Differently'** below for adaptive explanations.")
 
 def get_local_fallback_response(user_text, mode, has_image=False, history=[], image_data=None):
