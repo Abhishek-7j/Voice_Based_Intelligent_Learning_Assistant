@@ -7,76 +7,11 @@ load_dotenv()
 import re
 import json
 import ssl
-import urllib.parse
 import urllib.request
 
 def get_base_fallback_response(user_text, mode):
     text = user_text.lower().strip()
-    
-    # 0. Adaptive Pacing Voice Commands (Section 5.3 & 7.3 Project Report)
-    if any(cmd in text for cmd in ["simplify that", "explain simpler", "explain it simpler", "simpler explanation", "make it simple"]):
-        return ("💡 **Simplified Concept Breakdown**\n\n"
-                "Let's break this down into the simplest terms imaginable:\n\n"
-                "- **The Basic Idea**: Imagine building a house with toy LEGO blocks. Each block is a single building piece (like an atom or a line of code).\n"
-                "- **How it Works**: Instead of building everything at once, we connect one block at a time following simple rules.\n"
-                "- **Why it Matters**: Once you understand the smallest block, the whole big structure makes complete sense!\n\n"
-                "*Would you like to try a quick quiz on this topic to test your understanding?*")
 
-    if any(cmd in text for cmd in ["explain differently", "explain it differently", "different explanation", "another way"]):
-        return ("🔄 **Alternative Analogy & Real-World Perspective**\n\n"
-                "Here is another way to picture this concept using a everyday analogy:\n\n"
-                "- 🪙 **The Coin-Toss Analogy**: Think of a spinning coin. While it's spinning in mid-air, it is neither purely Heads nor Tails—it holds the potential for both at once!\n"
-                "- 🚦 **Traffic Light Analogy**: Think of traffic flowing through a smart signal system. Signals continuously adapt depending on how many cars arrive, optimizing flow in real time.\n\n"
-                "*Does this analogy make the concept clearer? Tell me which part you'd like to explore further!*")
-
-    # 1. AI Image Generation Request Detection (ChatGPT / Gemini style)
-    img_triggers = ["generate image", "draw", "create image", "create a picture", "make a picture", "show a picture", "picture of", "image of"]
-    if any(trigger in text for trigger in img_triggers):
-        # Clean prompt
-        prompt = re.sub(r'^(generate|draw|create|make|show)\s+(an?\s+)?(image|picture|photo)\s+(of\s+)?', '', text, flags=re.IGNORECASE).strip()
-        if not prompt:
-            prompt = "a vibrant futuristic AI learning companion in space"
-            
-        encoded = urllib.parse.quote(prompt)
-        img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
-        
-        return (f"## 🎨 AI Image Generator\n\n"
-                f"Here is your AI generated image for **\"{prompt.capitalize()}\"**:\n\n"
-                f"![{prompt}]({img_url})\n\n"
-                f"*Tip: You can ask me to generate images for any topic in science, space, history, or fantasy!*")
-
-    # 2. Greetings (Check with whole-word boundary matches)
-    greetings = ["hello", "hi", "hey", "sup", "greetings"]
-    if any(re.search(r'\b' + re.escape(greet) + r'\b', text) for greet in greetings):
-        if mode == "Teacher":
-            return ("👋 Hello! I am your AI Learning Companion.\n\n"
-                    "How can I help you learn today? Try asking me about:\n"
-                    "- 🌌 **Astronomy & Milky Way Galaxy**\n"
-                    "- 🛡️ **Cybersecurity & Encryption**\n"
-                    "- ⚛️ **Quantum Computing**\n"
-                    "- 💻 **Python Code Samples**\n"
-                    "- 🎨 **Generate AI Images**")
-        elif mode == "Coach":
-            return ("🔥 Hey there! Ready to crush your learning goals today?\n\n"
-                    "Remember: *consistency is key*. Tell me what topic you're studying today and let's break it down into actionable steps!")
-        else:
-            return ("✨ Hello explorer! Let's brainstorm something magical today.\n\n"
-                    "What ideas, stories, or images shall we create together? Type *'generate image of space'* or ask me a query!")
-
-    # 3. Cybersecurity & Information Security
-    if any(k in text for k in ["cybersecurity", "security", "encryption", "hacker", "firewall", "phishing", "malware", "network"]):
-        return ("## 🛡️ Fundamentals of Cybersecurity\n\n"
-                "Cybersecurity is the practice of protecting systems, networks, and data from digital attacks.\n\n"
-                "### Core Pillars (The CIA Triad):\n"
-                "1. **Confidentiality**: Ensuring data is accessible only to authorized users (e.g. using AES-256 Encryption).\n"
-                "2. **Integrity**: Safeguarding information from being altered or tampered with (e.g. Cryptographic Hashes like SHA-256).\n"
-                "3. **Availability**: Guaranteeing reliable access to data for authorized parties (e.g. DDoS Mitigation).\n\n"
-                "### Real-World Defensive Tools:\n"
-                "- **Firewalls**: Filter incoming and outgoing network traffic based on security rules.\n"
-                "- **Zero-Trust Architecture**: Never trust, always verify every access request.\n"
-                "- **Multi-Factor Authentication (MFA)**: Adds secondary security layers beyond passwords.")
-
-    # 4. Astronomy, Space & Galaxies
     if any(k in text for k in ["galaxy", "milky way", "astronomy", "space", "planet", "star", "black hole", "cosmos", "universe"]):
         return ("## 🌌 Astronomy & The Milky Way Galaxy\n\n"
                 "The **Milky Way** is a barred spiral galaxy containing over 100 to 400 billion stars, including our Solar System.\n\n"
@@ -249,6 +184,26 @@ def get_base_fallback_response(user_text, mode):
     if any(q in text for q in vision_queries):
         return ("📸 **AI Vision Tutor**\n\n"
                 "Please upload an image using the **Camera** or **Attachment** button in the search bar, and I will scan and analyze it for you!")
+
+    # Conversational & AI Identity Prompts (ChatGPT / Gemini style intent router)
+    identity_triggers = ["give me your name", "what is your name", "whats your name", "tell me your name", "who are you", "your name", "who created you", "what are you"]
+    if any(pat in text for pat in identity_triggers):
+        return ("✨ **I am your Voice-Based Intelligent Learning Assistant!**\n\n"
+                "I am an advanced conversational AI companion designed to help you learn efficiently:\n\n"
+                "- 🧠 **Academic & Real-World Knowledge**: Ask me about science, coding, history, math, literature, or animals.\n"
+                "- 📸 **Full Page Vision & Document OCR**: Upload any photo, diagram, or textbook page for an instant breakdown.\n"
+                "- 🎨 **AI Image Generation**: Type *'generate image of galaxy'* or *'draw a futuristic city'* to create visuals.\n"
+                "- 🎓 **Interactive Study Quizzes**: Test your knowledge step-by-step with adaptive feedback.\n\n"
+                "How can I assist your study session today?")
+
+    help_triggers = ["what can you do", "how can you help", "what are your features", "how do you work", "help me"]
+    if any(pat in text for pat in help_triggers):
+        return ("💡 **Here is what I can do for you:**\n\n"
+                "1. **Answer Any Educational Query**: Ask about quantum physics, biology, history, calculus, or programming.\n"
+                "2. **Full Page Vision & Document OCR**: Upload any photo or textbook page to extract and explain all the matter.\n"
+                "3. **AI Image Generation**: Type *'generate image of space'* or *'draw a futuristic city'* to create visuals.\n"
+                "4. **Adaptive Voice Controls**: Click **'Simplify That'** or **'Explain Differently'** to change explanation speed.\n"
+                "5. **Screen Reader Shortcuts**: Press `Alt+M` for Mic, `Alt+S` for Silence, `Alt+R` for Repeat.")
     
     # 1. AI Image Generation Request Detection (ChatGPT / Gemini style)
     img_triggers = ["generate image", "draw", "create image", "create a picture", "make a picture", "show a picture", "picture of", "image of"]
@@ -518,6 +473,13 @@ def search_web_resources(query):
     First tries direct Wikipedia REST Page Summary, then falls back to search API.
     """
     if not query or len(query.strip()) < 2:
+        return None
+
+    clean_query = query.strip().lower()
+
+    # Filter out conversational identity & pleasantry queries
+    conversational_phrases = ["give me your name", "what is your name", "whats your name", "tell me your name", "who are you", "what can you do", "how are you", "hello", "hi", "hey", "your name"]
+    if any(p in clean_query for p in conversational_phrases):
         return None
 
     clean_query = query.strip()
