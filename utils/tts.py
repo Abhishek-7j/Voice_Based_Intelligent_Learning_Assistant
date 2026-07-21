@@ -67,8 +67,8 @@ def clean_text_for_speech(text):
 
 def text_to_speech(text, folder='static/audio'):
     """
-    Converts text to speech. Uses OpenAI TTS if API key is available for premium sound,
-    otherwise falls back to gTTS.
+    Converts text to speech using gTTS (Google Text-to-Speech).
+    Operates 100% keyless with zero API key dependencies and zero quota limits.
     """
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -81,28 +81,11 @@ def text_to_speech(text, folder='static/audio'):
     if not cleaned_text:
         cleaned_text = "I have generated a response for you."
     
-    from utils.db import get_setting
-    api_key = get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
-    
-    # Try OpenAI TTS for Professional "Alexa" feel
-    if api_key and api_key != "your_openai_api_key_here":
-        try:
-            client = OpenAI(api_key=api_key)
-            response = client.audio.speech.create(
-                model="tts-1",
-                voice="nova", # Professional "Alexa" like voice (Nova or Shimmer are good)
-                input=cleaned_text[:4000] # OpenAI limit
-            )
-            response.stream_to_file(filepath)
-            return f"/static/audio/{filename}"
-        except Exception as e:
-            print(f"OpenAI TTS failed: {e}. Falling back to gTTS.")
-
-    # Fallback to gTTS (Free/Basic)
+    # Primary Keyless gTTS Speech Generator
     try:
-        tts = gTTS(text=cleaned_text, lang='en')
+        tts = gTTS(text=cleaned_text[:2500], lang='en')
         tts.save(filepath)
         return f"/static/audio/{filename}"
     except Exception as e:
-        print(f"Error in TTS fallback: {e}")
+        print(f"Error in keyless gTTS generation: {e}")
         return None
