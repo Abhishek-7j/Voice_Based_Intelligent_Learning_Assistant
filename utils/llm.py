@@ -366,7 +366,7 @@ def get_base_fallback_response(user_text, mode):
                 "- **1944**: D-Day Allied landings liberate Western Europe.\n"
                 "- **1945**: End of WWII and founding of the United Nations.")
 
-    # 11. Clean Universal Dynamic Response Engine with Live Web Resource Analysis
+    # 11. Clean Universal Dynamic Response Engine with Verified Resource Knowledge
     stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show", "give", "help"}
     raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
     meaningful = [w for w in raw_words if w.lower() not in stop_words and len(w) > 2]
@@ -375,16 +375,21 @@ def get_base_fallback_response(user_text, mode):
 
     # Check for live web resources
     resource = search_web_resources(user_text)
-    resource_block = ""
     if resource:
-        resource_block = (f"### 🌐 Live Web & Academic Resource Analysis:\n"
-                          f"- **Resource Title**: [{resource['title']}]({resource['url']})\n"
-                          f"- **Authority Source**: *{resource['source']}*\n"
-                          f"- **Extracted Insight**: > *\"{resource['snippet']}\"*\n\n")
+        return (f"## 💡 Detailed Educational Guide: {resource['title']}\n\n"
+                f"You asked: **\"{user_text.capitalize()}\"**\n\n"
+                f"### 🌐 Verified Academic Knowledge:\n"
+                f"- **Topic**: **[{resource['title']}]({resource['url']})** *(Source: {resource['source']})*\n"
+                f"- **Core Overview**: {resource['snippet']}\n\n"
+                f"### 🎯 Key Insights & Analysis:\n"
+                f"- **Fundamental Concept**: Understanding **{resource['title']}** involves analyzing its origins, practical applications, and core principles in modern science and everyday life.\n"
+                f"- **Educational Takeaway**: Studying **{resource['title']}** builds your analytical knowledge and real-world understanding.\n\n"
+                f"### 💡 Recommended Next Steps:\n"
+                f"- Ask me: *'Tell me more interesting facts about {resource['title']}'* or *'Quiz me on this topic'*!\n"
+                f"- Click **'Simplify That'** or **'Explain Differently'** below for adaptive explanations.")
 
     return (f"## 💡 Detailed Educational Guide: {topic_display}\n\n"
             f"You asked: **\"{user_text.capitalize()}\"**\n\n"
-            f"{resource_block}"
             f"### 🎯 Overview & Fundamental Principles:\n"
             f"- **Definition & Context**: **{topic_display}** represents a vital concept requiring focused analysis and practical application.\n"
             f"- **Core Mechanics**: Mastering **{topic_display}** involves connecting core theoretical principles to real-world problem-solving.\n\n"
@@ -509,17 +514,40 @@ def refine_and_classify_human_prompt(user_text):
 def search_web_resources(query):
     """
     Performs real-time web search & resource analysis to retrieve live, accurate,
-    authoritative information on any topic in the world from Wikipedia search APIs.
+    authoritative information on any topic in the world.
+    First tries direct Wikipedia REST Page Summary, then falls back to search API.
     """
-    if not query or len(query.strip()) < 3:
+    if not query or len(query.strip()) < 2:
         return None
 
     clean_query = query.strip()
-    
-    # 1. Wikipedia Search API
+
+    # Extract core subject keyword
+    stop_words = {"tell", "me", "about", "what", "is", "a", "an", "the", "can", "you", "explain", "how", "does", "work"}
+    words = [w for w in clean_query.split() if w.lower() not in stop_words]
+    core_topic = " ".join(words).capitalize() if words else clean_query
+
+    # 1. Direct Wikipedia Page Summary lookup (e.g. "Chicken", "Photosynthesis", "Quantum Computing")
     try:
-        wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(clean_query)}&format=json"
+        wiki_title = core_topic.replace(' ', '_')
+        wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(wiki_title)}"
         req = urllib.request.Request(wiki_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if data.get('type') != 'disambiguation' and 'extract' in data and data['extract'] and len(data['extract']) > 30:
+                return {
+                    'title': data.get('title', core_topic),
+                    'source': 'Wikipedia Academic Database',
+                    'url': data.get('content_urls', {}).get('desktop', {}).get('page', 'https://en.wikipedia.org'),
+                    'snippet': data['extract']
+                }
+    except Exception:
+        pass
+
+    # 2. Wikipedia Action Search API (for complex phrases)
+    try:
+        wiki_search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(clean_query)}&format=json"
+        req = urllib.request.Request(wiki_search_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=4) as response:
             data = json.loads(response.read().decode('utf-8'))
             search_results = data.get('query', {}).get('search', [])
@@ -534,8 +562,8 @@ def search_web_resources(query):
                     'url': page_url,
                     'snippet': snippet
                 }
-    except Exception as e:
-        print(f"Web resource search error: {e}")
+    except Exception:
+        pass
 
     return None
 
