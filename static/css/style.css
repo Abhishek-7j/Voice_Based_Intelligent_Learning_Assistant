@@ -1159,3 +1159,106 @@ body.theme-high-contrast .ai-bot-badge {
     color: #00ffff !important;
     border: 2px solid #00ffff !important;
 }
+
+/* Futuristic Robo AI Avatar Companion */
+.robo-avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.robo-head {
+    width: 70px;
+    height: 60px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 2px solid var(--accent);
+    border-radius: 18px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(66, 133, 224, 0.4);
+    animation: roboFloat 3s ease-in-out infinite;
+}
+
+.robo-antenna {
+    width: 4px;
+    height: 12px;
+    background: var(--accent);
+    position: absolute;
+    top: -12px;
+    border-radius: 2px;
+}
+
+.robo-antenna::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: -4px;
+    width: 12px;
+    height: 12px;
+    background: #c084fc;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #c084fc;
+}
+
+.robo-eyes {
+    display: flex;
+    gap: 16px;
+    margin-top: 4px;
+}
+
+.robo-eye {
+    width: 14px;
+    height: 14px;
+    background: #38bdf8;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #38bdf8;
+    animation: roboBlink 4s infinite;
+}
+
+.robo-mouth {
+    width: 20px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 2px;
+    margin-top: 8px;
+}
+
+.robo-status-pill {
+    margin-top: 14px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #38bdf8;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+}
+
+.pulse-icon {
+    animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes roboFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+@keyframes roboBlink {
+    0%, 95%, 100% { transform: scaleY(1); }
+    97% { transform: scaleY(0.1); }
+}
+
+@keyframes pulseGlow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.15); }
+}

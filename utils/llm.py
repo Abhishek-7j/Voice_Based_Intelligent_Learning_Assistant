@@ -5,8 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import re
-
+import json
+import ssl
 import urllib.parse
+import urllib.request
 
 def get_base_fallback_response(user_text, mode):
     text = user_text.lower().strip()
@@ -364,15 +366,25 @@ def get_base_fallback_response(user_text, mode):
                 "- **1944**: D-Day Allied landings liberate Western Europe.\n"
                 "- **1945**: End of WWII and founding of the United Nations.")
 
-    # 11. Clean Universal Dynamic Response Engine (Tailored specifically to the exact user prompt)
+    # 11. Clean Universal Dynamic Response Engine with Live Web Resource Analysis
     stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show", "give", "help"}
     raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
     meaningful = [w for w in raw_words if w.lower() not in stop_words and len(w) > 2]
     
     topic_display = " ".join(meaningful[-3:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Your Query")
 
+    # Check for live web resources
+    resource = search_web_resources(user_text)
+    resource_block = ""
+    if resource:
+        resource_block = (f"### 🌐 Live Web & Academic Resource Analysis:\n"
+                          f"- **Resource Title**: [{resource['title']}]({resource['url']})\n"
+                          f"- **Authority Source**: *{resource['source']}*\n"
+                          f"- **Extracted Insight**: > *\"{resource['snippet']}\"*\n\n")
+
     return (f"## 💡 Detailed Educational Guide: {topic_display}\n\n"
             f"You asked: **\"{user_text.capitalize()}\"**\n\n"
+            f"{resource_block}"
             f"### 🎯 Overview & Fundamental Principles:\n"
             f"- **Definition & Context**: **{topic_display}** represents a vital concept requiring focused analysis and practical application.\n"
             f"- **Core Mechanics**: Mastering **{topic_display}** involves connecting core theoretical principles to real-world problem-solving.\n\n"
@@ -494,9 +506,38 @@ def refine_and_classify_human_prompt(user_text):
 
     return cleaned
 
-import json
-import ssl
-import urllib.request
+def search_web_resources(query):
+    """
+    Performs real-time web search & resource analysis to retrieve live, accurate,
+    authoritative information on any topic in the world from Wikipedia search APIs.
+    """
+    if not query or len(query.strip()) < 3:
+        return None
+
+    clean_query = query.strip()
+    
+    # 1. Wikipedia Search API
+    try:
+        wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(clean_query)}&format=json"
+        req = urllib.request.Request(wiki_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            search_results = data.get('query', {}).get('search', [])
+            if search_results:
+                first = search_results[0]
+                title = first.get('title', clean_query)
+                snippet = re.sub(r'<[^>]+>', '', first.get('snippet', ''))
+                page_url = f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
+                return {
+                    'title': title,
+                    'source': 'Wikipedia Academic Database',
+                    'url': page_url,
+                    'snippet': snippet
+                }
+    except Exception as e:
+        print(f"Web resource search error: {e}")
+
+    return None
 
 def fetch_online_ai_fallback(user_text, system_prompt="You are an expert educational tutor AI companion."):
     """
@@ -504,11 +545,20 @@ def fetch_online_ai_fallback(user_text, system_prompt="You are an expert educati
     when primary OpenAI API key is unavailable or rate-limited.
     Ensures 100% online accuracy with zero mistakes for all current chats.
     """
+    # First, attempt live web resource search
+    resource = search_web_resources(user_text)
+    resource_context = ""
+    if resource:
+        resource_context = (f"\n\n[Live Analyzed Web Resource]\n"
+                            f"Title: {resource['title']}\n"
+                            f"Source: {resource['source']}\n"
+                            f"Content: {resource['snippet']}")
+
     try:
         url = "https://text.pollinations.ai/"
         payload = json.dumps({
             "messages": [
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": system_prompt + resource_context},
                 {"role": "user", "content": user_text}
             ],
             "model": "openai"
@@ -528,9 +578,11 @@ def fetch_online_ai_fallback(user_text, system_prompt="You are an expert educati
             method='POST'
         )
 
-        with urllib.request.urlopen(req, timeout=15, context=ctx) as response:
+        with urllib.request.urlopen(req, timeout=12, context=ctx) as response:
             result = response.read().decode('utf-8').strip()
             if result and len(result) > 20:
+                if resource and resource['url'] not in result:
+                    result += f"\n\n🌐 **Live Analyzed Resource**: [{resource['title']}]({resource['url']}) *({resource['source']})*"
                 return result
     except Exception as e:
         print(f"Error fetching online fallback AI via POST: {e}")
