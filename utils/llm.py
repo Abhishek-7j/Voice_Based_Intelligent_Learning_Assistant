@@ -665,7 +665,8 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     user_text = refine_and_classify_human_prompt(user_text)
 
     from utils.db import get_setting
-    api_key = get_setting("gemini_api_key") or os.getenv("GEMINI_API_KEY") or get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
+    raw_key = get_setting("gemini_api_key") or os.getenv("GEMINI_API_KEY") or get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
+    api_key = raw_key.strip("'\" \t\r\n") if raw_key else None
     has_image = image_data is not None
 
     system_prompts = {
