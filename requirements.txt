@@ -5,3 +5,4 @@ gTTS
 python-dotenv
 flask-cors
 Pillow
+gunicorn
