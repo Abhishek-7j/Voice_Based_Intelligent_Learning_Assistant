@@ -479,7 +479,7 @@ def search_web_resources(query):
     clean_query = query.strip().lower()
 
     # Filter out conversational identity & pleasantry queries
-    conversational_phrases = ["give me your name", "what is your name", "whats your name", "tell me your name", "who are you", "what can you do", "how are you", "hello", "hi", "hey", "your name"]
+    conversational_phrases = ["give me your name", "what is your name", "whats your name", "tell me your name", "who are you", "what can you do", "how are you", "hello", "hi", "hey", "your name", "explain me about you", "explain about you", "tell me about you", "tell about you", "about you"]
     if any(p in clean_query for p in conversational_phrases):
         return None
 
@@ -610,7 +610,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=0.7 if mode == "Creative" else 0.4,
-            max_output_tokens=1000
+            max_output_tokens=3500
         )
         
         for m_name in ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']:
@@ -639,7 +639,10 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
             parts.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
         parts.append({"text": f"System Instruction: {system_prompt}\n\nUser Question: {user_text}"})
         
-        payload = json.dumps({"contents": [{"parts": parts}]}).encode('utf-8')
+        payload = json.dumps({
+            "contents": [{"parts": parts}],
+            "generationConfig": {"maxOutputTokens": 3500}
+        }).encode('utf-8')
         req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
         with urllib.request.urlopen(req, timeout=12) as response:
             data = json.loads(response.read().decode('utf-8'))
@@ -666,10 +669,10 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     has_image = image_data is not None
 
     system_prompts = {
-        "Teacher": "You are Google Gemini, an advanced AI Bot assistant and learning companion. Your purpose is to understand human intent 100% accurately even if prompts are informal or contain speech-to-text typos. Provide direct, highly accurate, structured explanations with real-world examples and code snippets.",
-        "Coach": "You are Google Gemini, an energetic AI Bot coach and project planner. You help users break down ambitious goals, stay focused, build study schedules, and structure complex tasks step-by-step.",
-        "Creative": "You are Google Gemini, an imaginative AI Bot brainstorming partner and creative writer. You assist with creative storytelling, drafting essays, designing ideas, and exploring outside-the-box concepts.",
-        "Quiz": "You are Google Gemini, an interactive AI Bot Quiz Master and knowledge evaluator. Pose one clear conceptual or practical question at a time, grade the user's answer accurately with detailed explanations, and guide their learning journey."
+        "Teacher": "You are an AI Learning Assistant and educational mentor built to teach users whatever they want to learn. Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your AI Learning Assistant' designed to teach and explain core concepts in science, coding, history, math, literature, and general knowledge. Provide direct, highly accurate, structured explanations with real-world examples.",
+        "Coach": "You are an AI Learning Coach and project planner built to guide users through ambitious goals and study schedules. Never identify yourself as 'Gemini' or 'a Google model'. Introduce yourself as an AI Learning Coach designed to help users structure complex tasks step-by-step.",
+        "Creative": "You are an AI Learning Assistant and creative brainstorming partner. Never identify yourself as 'Gemini' or 'a Google model'. Introduce yourself as an AI Learning Assistant built to inspire creative storytelling, design ideas, and essay writing.",
+        "Quiz": "You are an interactive AI Quiz Master and study evaluator. Never identify yourself as 'Gemini' or 'a Google model'. Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
     }
 
     # 1. Attempt Google Gemini API if key is provided
