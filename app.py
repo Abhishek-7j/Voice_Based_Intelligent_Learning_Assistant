@@ -18,13 +18,13 @@ init_db()
 
 @app.route('/settings/api_key', methods=['GET'])
 def get_api_key_status():
-    key = get_setting('openai_api_key') or os.getenv("OPENAI_API_KEY")
+    key = get_setting('gemini_api_key') or os.getenv("GEMINI_API_KEY") or get_setting('openai_api_key') or os.getenv("OPENAI_API_KEY")
     configured = False
     masked = ""
-    if key and key != "your_openai_api_key_here":
+    if key and key not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:
         configured = True
         masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "Configured"
-    return jsonify({'configured': configured, 'masked': masked})
+    return jsonify({'configured': configured, 'masked': masked, 'provider': 'Gemini'})
 
 @app.route('/settings/api_key', methods=['POST'])
 def save_api_key():
@@ -32,8 +32,8 @@ def save_api_key():
     key = data.get('api_key', '').strip()
     if not key:
         return jsonify({'error': 'API key cannot be empty'}), 400
-    set_setting('openai_api_key', key)
-    return jsonify({'status': 'success', 'message': 'API Key updated successfully'})
+    set_setting('gemini_api_key', key)
+    return jsonify({'status': 'success', 'message': 'Gemini API Key updated successfully'})
 
 @app.route('/service-worker.js')
 def service_worker():

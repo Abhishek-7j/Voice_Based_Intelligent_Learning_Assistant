@@ -1,11 +1,11 @@
 # Voice-Based Intelligent Learning Assistant 🧠🎙️
 
-A premium, interactive web application that allows users to learn any topic through voice and text. Powered by OpenAI, Flask, and Web Speech AI.
+A premium, interactive web application that allows users to learn any topic through voice and text. Powered by Google Gemini AI, Flask, and Web Speech AI.
 
 ## ✨ Features
 
 - **Voice Interaction**: Record your voice directly in the browser.
-- **Intelligent Responses**: Uses OpenAI's GPT-4o-mini to provide educational and concise answers.
+- **Intelligent Responses**: Uses Google Gemini AI (gemini-2.5-flash / gemini-1.5-flash) to provide educational and concise answers.
 - **Text-to-Speech (TTS)**: Automatically reads back answers using gTTS.
 - **Modern UI**: Dark-themed, responsive design with glassmorphism and animations.
 - **Chat History**: Maintains context during your learning session.
@@ -14,14 +14,14 @@ A premium, interactive web application that allows users to learn any topic thro
 
 - **Backend**: Python, Flask
 - **Frontend**: HTML5, CSS3 (Vanilla), JavaScript (ES6+)
-- **AI/ML**: OpenAI API
+- **AI/ML**: Google Gemini API (`google-genai`)
 - **Voice**: Web Speech API (Input), gTTS (Output)
 
 ## 🚀 Installation & Setup
 
 ### 1. Prerequisite
 - Python 3.8+ installed.
-- An OpenAI API Key.
+- A Google Gemini API Key.
 
 ### 2. Clone the Project
 ```bash
@@ -36,9 +36,9 @@ pip install -r requirements.txt
 
 ### 4. Configuration
 1. Create a `.env` file in the root directory (you can copy `.env.example`).
-2. Add your OpenAI API key:
+2. Add your Google Gemini API key:
    ```env
-   OPENAI_API_KEY=your_actual_key_here
+   GEMINI_API_KEY=your_actual_key_here
    SECRET_KEY=any_random_string
    ```
 

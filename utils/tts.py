@@ -1,7 +1,6 @@
 import os
 import re
 from gtts import gTTS
-from openai import OpenAI
 from dotenv import load_dotenv
 import uuid
 

@@ -1,13 +1,14 @@
 import os
-from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import re
 import json
 import ssl
+import base64
+import io
+import urllib.parse
 import urllib.request
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_base_fallback_response(user_text, mode):
     text = user_text.lower().strip()
@@ -578,56 +579,105 @@ def fetch_online_ai_fallback(user_text, system_prompt="You are an expert educati
         print(f"Error fetching online fallback AI via POST: {e}")
     return None
 
+def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor.", mode="Teacher", image_data=None):
+    """
+    Calls Google Gemini API using official google-genai SDK or direct REST API fallback.
+    Supports Multimodal Vision (base64 image payload) and text generation.
+    """
+    if not api_key:
+        return None
+
+    # 1. Official google-genai SDK
+    try:
+        from google import genai
+        from google.genai import types
+        
+        client = genai.Client(api_key=api_key)
+        contents = []
+        
+        if image_data:
+            try:
+                from PIL import Image
+                img_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
+                img = Image.open(io.BytesIO(img_bytes))
+                contents.append(img)
+            except Exception as e:
+                print(f"Image decode error for Gemini: {e}")
+        
+        prompt_text = user_text if user_text else "Scan and analyze this uploaded document or image in detail."
+        contents.append(prompt_text)
+        
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=0.7 if mode == "Creative" else 0.4,
+            max_output_tokens=1000
+        )
+        
+        for m_name in ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']:
+            try:
+                res = client.models.generate_content(
+                    model=m_name,
+                    contents=contents,
+                    config=config
+                )
+                if res and res.text:
+                    return res.text
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        parts = []
+        if image_data:
+            raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
+            mime = "image/jpeg"
+            if "data:image/png" in image_data:
+                mime = "image/png"
+            parts.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
+        parts.append({"text": f"System Instruction: {system_prompt}\n\nUser Question: {user_text}"})
+        
+        payload = json.dumps({"contents": [{"parts": parts}]}).encode('utf-8')
+        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+        with urllib.request.urlopen(req, timeout=12) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            candidates = data.get('candidates', [])
+            if candidates:
+                p_parts = candidates[0].get('content', {}).get('parts', [])
+                if p_parts and 'text' in p_parts[0]:
+                    return p_parts[0]['text']
+    except Exception:
+        pass
+
+    return None
+
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     """
-    Generates a professional, AI Bot companion response.
-    Operates 100% keyless with zero API key requirement, utilizing the Keyless Academic & Resource Engine.
-    Optionally supports OpenAI API if a valid key is provided.
+    Generates a professional, AI Bot companion response using Google Gemini API.
+    Operates keylessly by default with zero requirement, or uses user-provided Gemini API key.
     """
     # Refine prompt using AI Bot Intent Engine
     user_text = refine_and_classify_human_prompt(user_text)
 
     from utils.db import get_setting
-    api_key = get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
+    api_key = get_setting("gemini_api_key") or os.getenv("GEMINI_API_KEY") or get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
     has_image = image_data is not None
 
     system_prompts = {
-        "Teacher": "You are an advanced AI Bot assistant and learning companion, similar to Google Gemini, ChatGPT, and Meta AI. Your purpose is to understand human intent 100% accurately even if prompts are informal or contain speech-to-text typos. Provide direct, highly accurate, structured explanations with real-world examples and code snippets.",
-        "Coach": "You are an energetic AI Bot coach and project planner. You help users break down ambitious goals, stay focused, build study schedules, and structure complex tasks step-by-step.",
-        "Creative": "You are an imaginative AI Bot brainstorming partner and creative writer. You assist with creative storytelling, drafting essays, designing ideas, and exploring outside-the-box concepts.",
-        "Quiz": "You are an interactive AI Bot Quiz Master and knowledge evaluator. Pose one clear conceptual or practical question at a time, grade the user's answer accurately with detailed explanations, and guide their learning journey."
+        "Teacher": "You are Google Gemini, an advanced AI Bot assistant and learning companion. Your purpose is to understand human intent 100% accurately even if prompts are informal or contain speech-to-text typos. Provide direct, highly accurate, structured explanations with real-world examples and code snippets.",
+        "Coach": "You are Google Gemini, an energetic AI Bot coach and project planner. You help users break down ambitious goals, stay focused, build study schedules, and structure complex tasks step-by-step.",
+        "Creative": "You are Google Gemini, an imaginative AI Bot brainstorming partner and creative writer. You assist with creative storytelling, drafting essays, designing ideas, and exploring outside-the-box concepts.",
+        "Quiz": "You are Google Gemini, an interactive AI Bot Quiz Master and knowledge evaluator. Pose one clear conceptual or practical question at a time, grade the user's answer accurately with detailed explanations, and guide their learning journey."
     }
 
-    # 1. Optionally attempt Primary OpenAI API if key exists and is valid
-    if api_key and api_key != "your_openai_api_key_here":
-        try:
-            client = OpenAI(api_key=api_key)
-            messages = [
-                {"role": "system", "content": system_prompts.get(mode, system_prompts["Teacher"])}
-            ]
-            
-            for msg in history:
-                messages.append(msg)
-                
-            if has_image:
-                user_content = [
-                    {"type": "text", "text": user_text},
-                    {"type": "image_url", "image_url": {"url": image_data}}
-                ]
-                messages.append({"role": "user", "content": user_content})
-            else:
-                messages.append({"role": "user", "content": user_text})
-            
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                max_tokens=600,
-                temperature=0.7 if mode == "Creative" else 0.5
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            # Silent fallback to keyless engine on quota 429 error
-            pass
+    # 1. Attempt Google Gemini API if key is provided
+    if api_key and api_key not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:
+        sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
+        gemini_res = call_gemini_api(api_key, user_text, sys_prompt, mode, image_data)
+        if gemini_res:
+            return gemini_res
 
-    # 2. Keyless AI Knowledge & Web Resource Engine (Operates 100% Free with Zero Keys)
+    # 2. Keyless Academic & Resource Engine (Fallback for offline/keyless states)
     return get_local_fallback_response(user_text, mode, has_image, history, image_data)
