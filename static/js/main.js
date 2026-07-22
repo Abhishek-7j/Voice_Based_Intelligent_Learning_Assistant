@@ -389,6 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
+            if (response.status === 502 || response.status === 503) {
+                appendMessage('ai', "⏳ <strong>Server Initializing:</strong> Render free tier is waking up or deploying updates. Please wait 10-15 seconds and try sending your question again!", true);
+                return;
+            }
+
             const data = await response.json();
 
             if (data.error === 'configuration_needed') {
@@ -424,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadConversations(); // Reload sidebar sessions
             }
         } catch (error) {
-            appendMessage('ai', "I'm having trouble reaching the server. Please check your connection.", true);
+            appendMessage('ai', "⏳ Server is connecting or building update. Please wait 10-15 seconds and try again.", true);
         } finally {
             thinkingIndicator.style.display = 'none';
         }
