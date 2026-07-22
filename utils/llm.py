@@ -613,7 +613,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
             max_output_tokens=1000
         )
         
-        for m_name in ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']:
+        for m_name in ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']:
             try:
                 res = client.models.generate_content(
                     model=m_name,
@@ -629,7 +629,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
 
     # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
         parts = []
         if image_data:
             raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
