@@ -326,9 +326,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             messageDiv.innerHTML = marked.parse(processedText);
+            
+            // Auto-render KaTeX math formulas and numbers
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(messageDiv, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
         } else {
             messageDiv.textContent = text;
         }
+
 
         
         chatHistory.appendChild(messageDiv);
