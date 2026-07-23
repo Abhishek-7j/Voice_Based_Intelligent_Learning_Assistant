@@ -71,40 +71,49 @@ def index():
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    data = request.json
-    user_text = data.get('text', '').strip()
-    mode = data.get('mode', 'Teacher')
-    conv_id = data.get('conversation_id') or str(uuid.uuid4())
-    voice = data.get('voice', 'nova')
-    image_data = data.get('image_data') # base64 string
-    
-    if not user_text:
-        return jsonify({'error': 'Empty message'}), 400
+    try:
+        data = request.json or {}
+        user_text = data.get('text', '').strip()
+        mode = data.get('mode', 'Teacher')
+        conv_id = data.get('conversation_id') or str(uuid.uuid4())
+        voice = data.get('voice', 'nova')
+        image_data = data.get('image_data') # base64 string
+        
+        if not user_text:
+            return jsonify({'error': 'Empty message'}), 400
 
-    # Get history from DB
-    history = get_history(conv_id)
-    
-    # Get AI response
-    ai_response_text = get_ai_response(user_text, history, mode, image_data)
-    
-    if "CONFIG_ERROR:" in ai_response_text:
-        return jsonify({'error': 'configuration_needed', 'message': ai_response_text}), 401
-    
-    # Generate a title if it's new (using first message)
-    title = user_text[:30] + '...' if len(user_text) > 30 else user_text
-    
-    # Save to DB
-    save_message(conv_id, 'user', user_text, title, mode)
-    save_message(conv_id, 'assistant', ai_response_text, title, mode)
-    
-    # Generate Audio
-    audio_url = text_to_speech(ai_response_text)
-    
-    return jsonify({
-        'response': ai_response_text,
-        'audio_url': audio_url,
-        'conversation_id': conv_id
-    })
+        # Get history from DB
+        history = get_history(conv_id)
+        
+        # Get AI response
+        ai_response_text = get_ai_response(user_text, history, mode, image_data)
+        
+        if "CONFIG_ERROR:" in ai_response_text:
+            return jsonify({'error': 'configuration_needed', 'message': ai_response_text}), 401
+        
+        # Generate a title if it's new (using first message)
+        title = user_text[:30] + '...' if len(user_text) > 30 else user_text
+        
+        # Save to DB
+        save_message(conv_id, 'user', user_text, title, mode)
+        save_message(conv_id, 'assistant', ai_response_text, title, mode)
+        
+        # Generate Audio (guaranteed non-blocking & fast)
+        audio_url = text_to_speech(ai_response_text)
+        
+        return jsonify({
+            'response': ai_response_text,
+            'audio_url': audio_url,
+            'conversation_id': conv_id
+        })
+    except Exception as e:
+        print(f"Unhandled error in /ask route: {e}")
+        return jsonify({
+            'response': "I encountered a momentary issue processing your request. Please try asking your question again!",
+            'audio_url': None,
+            'conversation_id': data.get('conversation_id') if 'data' in locals() else None
+        }), 200
+
 
 @app.route('/history', methods=['GET'])
 def history():

@@ -64,15 +64,35 @@ def clean_text_for_speech(text):
 
     return clean
 
+def cleanup_old_audio(folder='static/audio', max_files=10):
+    """
+    Deletes older audio files to preserve disk space and prevent memory bloat on Render.
+    """
+    try:
+        if not os.path.exists(folder):
+            return
+        files = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.mp3')]
+        if len(files) > max_files:
+            files.sort(key=os.path.getmtime)
+            for old_file in files[:-max_files]:
+                try:
+                    os.remove(old_file)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
 def text_to_speech(text, folder='static/audio'):
     """
     Converts text to speech using gTTS (Google Text-to-Speech).
     Operates 100% keyless with zero API key dependencies and zero quota limits.
     """
     if not os.path.exists(folder):
-        os.makedirs(folder)
+        os.makedirs(folder, exist_ok=True)
         
-    filename = f"response_{uuid.uuid4().hex}.mp3"
+    cleanup_old_audio(folder, max_files=10)
+    
+    filename = f"response_{uuid.uuid4().hex[:8]}.mp3"
     filepath = os.path.join(folder, filename)
     
     # Clean text to prevent reading symbols out loud
@@ -80,9 +100,12 @@ def text_to_speech(text, folder='static/audio'):
     if not cleaned_text:
         cleaned_text = "I have generated a response for you."
     
+    # Use first ~600 chars for rapid speech preview (under 1 second generation)
+    speech_snippet = cleaned_text[:600]
+    
     # Primary Keyless gTTS Speech Generator
     try:
-        tts = gTTS(text=cleaned_text[:2500], lang='en')
+        tts = gTTS(text=speech_snippet, lang='en')
         tts.save(filepath)
         return f"/static/audio/{filename}"
     except Exception as e:

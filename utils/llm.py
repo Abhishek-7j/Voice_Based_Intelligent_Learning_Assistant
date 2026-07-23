@@ -613,7 +613,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
             max_output_tokens=3500
         )
         
-        for m_name in ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']:
+        for m_name in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest']:
             try:
                 res = client.models.generate_content(
                     model=m_name,
@@ -628,31 +628,30 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
         pass
 
     # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
-        parts = []
-        if image_data:
-            raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
-            mime = "image/jpeg"
-            if "data:image/png" in image_data:
-                mime = "image/png"
-            parts.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
-        parts.append({"text": f"System Instruction: {system_prompt}\n\nUser Question: {user_text}"})
-        
-        payload = json.dumps({
-            "contents": [{"parts": parts}],
-            "generationConfig": {"maxOutputTokens": 3500}
-        }).encode('utf-8')
-        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
-        with urllib.request.urlopen(req, timeout=12) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            candidates = data.get('candidates', [])
-            if candidates:
-                p_parts = candidates[0].get('content', {}).get('parts', [])
-                if p_parts and 'text' in p_parts[0]:
-                    return p_parts[0]['text']
-    except Exception:
-        pass
+    for model_id in ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
+            parts = []
+            if image_data:
+                raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
+                mime = "image/png" if "data:image/png" in image_data else "image/jpeg"
+                parts.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
+            parts.append({"text": f"System Instruction: {system_prompt}\n\nUser Question: {user_text}"})
+            
+            payload = json.dumps({
+                "contents": [{"parts": parts}],
+                "generationConfig": {"maxOutputTokens": 3000}
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                candidates = data.get('candidates', [])
+                if candidates:
+                    p_parts = candidates[0].get('content', {}).get('parts', [])
+                    if p_parts and 'text' in p_parts[0]:
+                        return p_parts[0]['text']
+        except Exception:
+            continue
 
     return None
 
