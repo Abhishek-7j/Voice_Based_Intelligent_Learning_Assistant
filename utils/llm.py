@@ -705,14 +705,15 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
             "You are a MULTI-PERFORMER: do not limit yourself to text. You MUST output real-time photos, diagrams, and video explanations directly in your responses whenever helpful or requested:\n"
             "1. **Photos & Diagrams**: When asked for photos, visual illustrations, or diagrams, output a high-quality, relevant image using this EXACT markdown format:\n"
             "   `![Description](https://image.pollinations.ai/prompt/{url_encoded_short_description}?width=800&height=500&nologo=true)`\n"
-            "2. **Videos & Animations**: When asked for videos, animations, clips, or motion demonstrations, embed a responsive YouTube search player directly inside your markdown using this EXACT iframe format:\n"
-            "   `<iframe src=\"https://www.youtube.com/embed?listType=search&list={url_encoded_search_query}+educational+explanation\" width=\"100%\" height=\"320\" frameborder=\"0\" style=\"border-radius:12px; margin: 15px 0; border: 1px solid rgba(255,255,255,0.1);\" allowfullscreen></iframe>`\n"
+            "2. **Videos & Animations**: When asked for videos, animations, clips, or motion demonstrations, output a beautiful, clickable YouTube search button card using this EXACT HTML format:\n"
+            "   `<a href=\"https://www.youtube.com/results?search_query={url_encoded_search_query}+educational+explanation\" target=\"_blank\" style=\"text-decoration:none;\"><div class=\"youtube-card\" style=\"display:flex; align-items:center; gap:12px; background:rgba(255,0,0,0.1); border:1px solid rgba(255,0,0,0.3); padding:15px; border-radius:12px; margin:15px 0; color:#ff8b8b; transition:all 0.3s ease;\"><i class=\"fab fa-youtube\" style=\"font-size:2.5rem; color:#ff0000;\"></i><div><strong style=\"display:block; font-size:1rem; color:#ffffff;\">Watch Video Lessons on YouTube</strong><span style=\"font-size:0.8rem; opacity:0.85;\">Search: \"{search_query_here}\"</span></div></div></a>`\n"
             "Provide direct, highly accurate, structured explanations with real-world examples."
         ),
         "Coach": "You are an AI Learning Coach and project planner. You are a MULTI-PERFORMER. Never identify yourself as 'Gemini'. When asked for photos, diagrams, or videos, output them using the exact formats listed above. Help users structure complex tasks step-by-step.",
         "Creative": "You are an AI Learning Assistant and creative partner. You are a MULTI-PERFORMER. Never identify yourself as 'Gemini'. When asked for photos, diagrams, or videos, output them using the exact formats listed above. Inspire creative storytelling, design ideas, and essay writing.",
         "Quiz": "You are an interactive AI Quiz Master. You are a MULTI-PERFORMER. Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
     }
+
 
     # 1. Attempt Google Gemini API if key is provided
     if api_key and api_key not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:

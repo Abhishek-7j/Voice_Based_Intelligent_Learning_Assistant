@@ -308,10 +308,28 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Parse Markdown for AI messages, simple text for User messages
         if (role === 'ai' && typeof marked !== 'undefined' && !isError) {
-            messageDiv.innerHTML = marked.parse(text);
+            let processedText = text;
+            
+            // Fix Pollinations AI URLs that have unescaped spaces or special characters in Markdown parenthesis
+            processedText = processedText.replace(/\((https:\/\/image\.pollinations\.ai\/prompt\/[^\)]+)\)/g, (match, url) => {
+                const parts = url.split('/prompt/');
+                if (parts.length === 2) {
+                    const queryPart = parts[1];
+                    const paramSplit = queryPart.split('?');
+                    const promptText = paramSplit[0];
+                    const params = paramSplit[1] ? ('?' + paramSplit[1]) : '';
+                    // Clean and encode the prompt string
+                    const encodedPrompt = encodeURIComponent(decodeURIComponent(promptText)).replace(/%20/g, '+');
+                    return `(https://image.pollinations.ai/prompt/${encodedPrompt}${params})`;
+                }
+                return match;
+            });
+            
+            messageDiv.innerHTML = marked.parse(processedText);
         } else {
             messageDiv.textContent = text;
         }
+
         
         chatHistory.appendChild(messageDiv);
         chatHistory.scrollTo({ top: chatHistory.scrollHeight, behavior: 'smooth' });

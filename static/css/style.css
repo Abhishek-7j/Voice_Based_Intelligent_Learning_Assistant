@@ -1274,3 +1274,25 @@ body.theme-high-contrast .assistant-status-pill {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.4; transform: scale(1.15); }
 }
+
+/* YouTube Card Hover Styles */
+.youtube-card {
+    transition: all 0.3s ease !important;
+}
+
+.youtube-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 0, 0, 0.18) !important;
+    border-color: rgba(255, 0, 0, 0.6) !important;
+    box-shadow: 0 6px 20px rgba(255, 0, 0, 0.25) !important;
+}
+
+.youtube-card:hover i {
+    transform: scale(1.15);
+    color: #ff3333 !important;
+}
+
+.youtube-card i {
+    transition: transform 0.3s ease, color 0.3s ease !important;
+}
+
