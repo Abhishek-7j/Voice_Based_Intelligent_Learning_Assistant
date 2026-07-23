@@ -579,10 +579,10 @@ def fetch_online_ai_fallback(user_text, system_prompt="You are an expert educati
         print(f"Error fetching online fallback AI via POST: {e}")
     return None
 
-def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor.", mode="Teacher", image_data=None):
+def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor.", mode="Teacher", image_data=None, history=[]):
     """
     Calls Google Gemini API using official google-genai SDK or direct REST API fallback.
-    Supports Multimodal Vision (base64 image payload) and text generation.
+    Supports multi-turn chat history context, Multimodal Vision, and text generation.
     """
     if not api_key:
         return None
@@ -595,17 +595,31 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
         client = genai.Client(api_key=api_key)
         contents = []
         
+        # Build chat history conversation turns
+        for msg in history:
+            role = "user" if msg['role'] == 'user' else "model"
+            contents.append(types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=msg['content'])]
+            ))
+        
+        current_parts = []
         if image_data:
             try:
                 from PIL import Image
                 img_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
                 img = Image.open(io.BytesIO(img_bytes))
-                contents.append(img)
+                current_parts.append(img)
             except Exception as e:
                 print(f"Image decode error for Gemini: {e}")
         
         prompt_text = user_text if user_text else "Scan and analyze this uploaded document or image in detail."
-        contents.append(prompt_text)
+        current_parts.append(prompt_text)
+        
+        contents.append(types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=p) if isinstance(p, str) else p for p in current_parts]
+        ))
         
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
@@ -631,15 +645,29 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
     for model_id in ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
-            parts = []
+            
+            contents_payload = []
+            for msg in history:
+                role = "user" if msg['role'] == 'user' else "model"
+                contents_payload.append({
+                    "role": role,
+                    "parts": [{"text": msg['content']}]
+                })
+            
+            current_parts_payload = []
             if image_data:
                 raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
                 mime = "image/png" if "data:image/png" in image_data else "image/jpeg"
-                parts.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
-            parts.append({"text": f"System Instruction: {system_prompt}\n\nUser Question: {user_text}"})
+                current_parts_payload.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
+            current_parts_payload.append({"text": user_text})
+            
+            contents_payload.append({
+                "role": "user",
+                "parts": current_parts_payload
+            })
             
             payload = json.dumps({
-                "contents": [{"parts": parts}],
+                "contents": contents_payload,
                 "generationConfig": {"maxOutputTokens": 3000}
             }).encode('utf-8')
             req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
@@ -655,6 +683,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
 
     return None
 
+
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     """
     Generates a professional, AI Bot companion response using Google Gemini API.
@@ -669,18 +698,29 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     has_image = image_data is not None
 
     system_prompts = {
-        "Teacher": "You are an AI Learning Assistant and educational mentor built to teach users whatever they want to learn. Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your AI Learning Assistant' designed to teach and explain core concepts in science, coding, history, math, literature, and general knowledge. Provide direct, highly accurate, structured explanations with real-world examples.",
-        "Coach": "You are an AI Learning Coach and project planner built to guide users through ambitious goals and study schedules. Never identify yourself as 'Gemini' or 'a Google model'. Introduce yourself as an AI Learning Coach designed to help users structure complex tasks step-by-step.",
-        "Creative": "You are an AI Learning Assistant and creative brainstorming partner. Never identify yourself as 'Gemini' or 'a Google model'. Introduce yourself as an AI Learning Assistant built to inspire creative storytelling, design ideas, and essay writing.",
-        "Quiz": "You are an interactive AI Quiz Master and study evaluator. Never identify yourself as 'Gemini' or 'a Google model'. Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
+        "Teacher": (
+            "You are an AI Learning Assistant and educational mentor built to teach users whatever they want to learn. "
+            "Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. "
+            "When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your AI Learning Assistant'. "
+            "You are a MULTI-PERFORMER: do not limit yourself to text. You MUST output real-time photos, diagrams, and video explanations directly in your responses whenever helpful or requested:\n"
+            "1. **Photos & Diagrams**: When asked for photos, visual illustrations, or diagrams, output a high-quality, relevant image using this EXACT markdown format:\n"
+            "   `![Description](https://image.pollinations.ai/prompt/{url_encoded_short_description}?width=800&height=500&nologo=true)`\n"
+            "2. **Videos & Animations**: When asked for videos, animations, clips, or motion demonstrations, embed a responsive YouTube search player directly inside your markdown using this EXACT iframe format:\n"
+            "   `<iframe src=\"https://www.youtube.com/embed?listType=search&list={url_encoded_search_query}+educational+explanation\" width=\"100%\" height=\"320\" frameborder=\"0\" style=\"border-radius:12px; margin: 15px 0; border: 1px solid rgba(255,255,255,0.1);\" allowfullscreen></iframe>`\n"
+            "Provide direct, highly accurate, structured explanations with real-world examples."
+        ),
+        "Coach": "You are an AI Learning Coach and project planner. You are a MULTI-PERFORMER. Never identify yourself as 'Gemini'. When asked for photos, diagrams, or videos, output them using the exact formats listed above. Help users structure complex tasks step-by-step.",
+        "Creative": "You are an AI Learning Assistant and creative partner. You are a MULTI-PERFORMER. Never identify yourself as 'Gemini'. When asked for photos, diagrams, or videos, output them using the exact formats listed above. Inspire creative storytelling, design ideas, and essay writing.",
+        "Quiz": "You are an interactive AI Quiz Master. You are a MULTI-PERFORMER. Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
     }
 
     # 1. Attempt Google Gemini API if key is provided
     if api_key and api_key not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:
         sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
-        gemini_res = call_gemini_api(api_key, user_text, sys_prompt, mode, image_data)
+        gemini_res = call_gemini_api(api_key, user_text, sys_prompt, mode, image_data, history)
         if gemini_res:
             return gemini_res
 
     # 2. Keyless Academic & Resource Engine (Fallback for offline/keyless states)
     return get_local_fallback_response(user_text, mode, has_image, history, image_data)
+
