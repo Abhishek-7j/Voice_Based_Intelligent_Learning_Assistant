@@ -1,6 +1,7 @@
 {
-  "name": "AI Mentor Learning Assistant",
-  "short_name": "AI Mentor",
+  "name": "Assistant Learning Companion",
+  "short_name": "Assistant",
+
   "description": "Interactive voice-based intelligent learning companion.",
   "start_url": "/",
   "display": "standalone",

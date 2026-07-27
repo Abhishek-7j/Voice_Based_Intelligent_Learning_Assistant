@@ -35,12 +35,48 @@ def save_api_key():
     set_setting('gemini_api_key', key)
     return jsonify({'status': 'success', 'message': 'Gemini API Key updated successfully'})
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({'status': 'alive', 'app': 'Assistant'})
+
+@app.route('/sync', methods=['POST'])
+def sync_data():
+    try:
+        data = request.json or {}
+        conversations = data.get('conversations', [])
+        settings = data.get('settings', {})
+        
+        # Restore settings if server DB was reset
+        for k, v in settings.items():
+            if v and not get_setting(k):
+                set_setting(k, v)
+                
+        # Restore conversations & messages if server DB was reset
+        for conv in conversations:
+            conv_id = conv.get('id')
+            title = conv.get('title', 'Restored Session')
+            mode = conv.get('mode', 'Teacher')
+            messages = conv.get('messages', [])
+            
+            if conv_id and messages:
+                for msg in messages:
+                    role = msg.get('role')
+                    content = msg.get('content')
+                    if role and content:
+                        save_message(conv_id, role, content, title, mode)
+                        
+        return jsonify({'status': 'synced', 'count': len(conversations)})
+    except Exception as e:
+        print(f"Error syncing client data: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/service-worker.js')
 def service_worker():
     response = app.send_static_file('js/service-worker.js')
     response.headers['Service-Worker-Allowed'] = '/'
     response.headers['Content-Type'] = 'application/javascript'
     return response
+
 
 import urllib.parse
 

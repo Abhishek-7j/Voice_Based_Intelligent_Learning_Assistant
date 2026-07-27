@@ -452,11 +452,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem(cachedKey, JSON.stringify(localHistory));
                 }
 
-                if (data.audio_url && autoplayToggle.checked) {
-                    ttsPlayer.src = data.audio_url;
-                    // Apply current playback speed rate
-                    ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
-                    ttsPlayer.play();
+                if (autoplayToggle.checked) {
+                    playSpeech(data.response, data.audio_url);
                 }
                 loadConversations(); // Reload sidebar sessions
             }
@@ -466,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
             thinkingIndicator.style.display = 'none';
         }
     }
+
 
     // --- Sidebar Session Loading ---
     async function loadConversations() {
@@ -715,6 +713,132 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Web Speech Synthesis Neural Voice Player ---
+    let currentSpeechText = "";
+
+    function cleanTextForSpeech(text) {
+        if (!text) return "";
+        let clean = text;
+        clean = clean.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
+        clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        clean = clean.replace(/<[^>]*>/g, '');
+        clean = clean.replace(/#{1,6}\s*/g, '');
+        clean = clean.replace(/\*\*|__|\*|_|~~|`/g, '');
+        clean = clean.replace(/[\u2600-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
+        return clean.replace(/\s+/g, ' ').trim();
+    }
+
+    function playSpeech(text, fallbackAudioUrl) {
+        stopSpeechPlayback();
+        currentSpeechText = text;
+
+        const cleanedText = cleanTextForSpeech(text);
+        if (!cleanedText) return;
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(cleanedText.substring(0, 1000));
+            utterance.rate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
+
+            // Select best available voice matching selected mode/gender
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                let preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Siri')));
+                if (!preferredVoice) {
+                    preferredVoice = voices.find(v => v.lang.startsWith('en'));
+                }
+                if (preferredVoice) utterance.voice = preferredVoice;
+            }
+
+            utterance.onstart = () => {
+                if (audioControlBar) audioControlBar.style.display = 'flex';
+                if (audioStatusText) audioStatusText.textContent = "Speaking (Neural Voice)...";
+                if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i>';
+            };
+
+            utterance.onend = () => {
+                if (audioControlBar) audioControlBar.style.display = 'none';
+            };
+
+            utterance.onerror = (e) => {
+                console.warn('Web Speech Synthesis notice, using audio fallback:', e);
+                if (fallbackAudioUrl && ttsPlayer) {
+                    ttsPlayer.src = fallbackAudioUrl;
+                    ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
+                    ttsPlayer.play();
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
+        } else if (fallbackAudioUrl && ttsPlayer) {
+            ttsPlayer.src = fallbackAudioUrl;
+            ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
+            ttsPlayer.play();
+        }
+    }
+
+    function stopSpeechPlayback() {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        if (ttsPlayer) {
+            ttsPlayer.pause();
+            ttsPlayer.currentTime = 0;
+        }
+        if (audioControlBar) audioControlBar.style.display = 'none';
+    }
+
+    // --- Persistent Client-Server Sync Engine ---
+    async function syncClientWithServer() {
+        try {
+            let conversationsToSync = [];
+            let cachedConvs = localStorage.getItem('cached_conversations');
+            if (cachedConvs) {
+                try {
+                    let convsList = JSON.parse(cachedConvs);
+                    for (let c of convsList) {
+                        let historyKey = `cached_history_${c.id}`;
+                        let historyData = localStorage.getItem(historyKey);
+                        let msgs = historyData ? JSON.parse(historyData) : [];
+                        conversationsToSync.push({
+                            id: c.id,
+                            title: c.title,
+                            mode: c.mode || 'Teacher',
+                            messages: msgs
+                        });
+                    }
+                } catch(e) {}
+            }
+
+            let settingsToSync = {};
+            let localApiKey = localStorage.getItem('saved_gemini_api_key');
+            if (localApiKey) {
+                settingsToSync['gemini_api_key'] = localApiKey;
+            }
+
+            if (conversationsToSync.length > 0 || Object.keys(settingsToSync).length > 0) {
+                await fetch('/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        conversations: conversationsToSync,
+                        settings: settingsToSync
+                    })
+                });
+            }
+        } catch(e) {
+            console.warn('Sync notice:', e);
+        }
+    }
+
+    // --- Container Keep-Alive Ping Engine ---
+    function startKeepAlivePing() {
+        setInterval(() => {
+            fetch('/ping').catch(e => {});
+        }, 240000); // Ping every 4 minutes while tab is open
+    }
+
     // --- TTS Player Listeners ---
     ttsPlayer.addEventListener('play', () => {
         audioControlBar.style.display = 'flex';
@@ -733,26 +857,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Audio Control Widget Actions ---
     audioBtnPause.addEventListener('click', () => {
-        if (ttsPlayer.paused) {
-            // Apply speed rate on resume
-            ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
-            ttsPlayer.play();
-        } else {
+        if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+                audioStatusText.textContent = "Speaking (Neural Voice)...";
+                audioBtnPause.innerHTML = '<i class="fas fa-pause"></i>';
+            } else {
+                window.speechSynthesis.pause();
+                audioStatusText.textContent = "Paused";
+                audioBtnPause.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        } else if (ttsPlayer && !ttsPlayer.paused) {
             ttsPlayer.pause();
+        } else if (ttsPlayer && ttsPlayer.src) {
+            ttsPlayer.play();
         }
     });
 
     audioBtnStop.addEventListener('click', () => {
-        ttsPlayer.pause();
-        ttsPlayer.currentTime = 0;
-        audioControlBar.style.display = 'none';
+        stopSpeechPlayback();
     });
 
     audioBtnRetell.addEventListener('click', () => {
-        ttsPlayer.currentTime = 0;
-        ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
-        ttsPlayer.play();
+        if (currentSpeechText) {
+            playSpeech(currentSpeechText, ttsPlayer.src);
+        } else if (ttsPlayer && ttsPlayer.src) {
+            ttsPlayer.currentTime = 0;
+            ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
+            ttsPlayer.play();
+        }
     });
+
 
     // --- Event Listeners ---
     sendBtn.addEventListener('click', handleSendMessage);
@@ -931,8 +1066,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initial load configurations
-    loadConversations();
+    // Initial load configurations & sync
+    syncClientWithServer().then(() => loadConversations());
+    startKeepAlivePing();
+
 
     // --- Register Service Worker ---
     if ('serviceWorker' in navigator) {
