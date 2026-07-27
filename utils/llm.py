@@ -329,32 +329,29 @@ def get_base_fallback_response(user_text, mode):
     
     topic_display = " ".join(meaningful[-3:]).capitalize() if len(meaningful) >= 2 else (meaningful[0].capitalize() if meaningful else "Your Query")
 
+    # Check for photo / image request keywords
+    is_photo_request = any(k in text for k in ["photo", "photos", "picture", "pictures", "image", "images", "pic", "pics"])
+    if is_photo_request:
+        encoded_topic = urllib.parse.quote(topic_display)
+        img_url = f"https://image.pollinations.ai/prompt/high+resolution+detailed+8k+realistic+photo+of+{encoded_topic}?width=800&height=500&nologo=true"
+        return (f"Here are visual photos of **{topic_display}**:\n\n"
+                f"![{topic_display}]({img_url})\n\n"
+                f"### About {topic_display}:\n"
+                f"Exploring **{topic_display}** offers fascinating real-world perspectives and natural beauty. "
+                f"Would you like to learn more details about this topic?")
+
     # Check for live web resources
     resource = search_web_resources(user_text)
     if resource:
-        return (f"## 💡 Detailed Educational Guide: {resource['title']}\n\n"
-                f"You asked: **\"{user_text.capitalize()}\"**\n\n"
-                f"### 🌐 Verified Academic Knowledge:\n"
-                f"- **Topic**: **[{resource['title']}]({resource['url']})** *(Source: {resource['source']})*\n"
-                f"- **Core Overview**: {resource['snippet']}\n\n"
-                f"### 🎯 Key Insights & Analysis:\n"
-                f"- **Fundamental Concept**: Understanding **{resource['title']}** involves analyzing its origins, practical applications, and core principles in modern science and everyday life.\n"
-                f"- **Educational Takeaway**: Studying **{resource['title']}** builds your analytical knowledge and real-world understanding.\n\n"
-                f"### 💡 Recommended Next Steps:\n"
-                f"- Ask me: *'Tell me more interesting facts about {resource['title']}'* or *'Quiz me on this topic'*!\n"
-                f"- Click **'Simplify That'** or **'Explain Differently'** below for adaptive explanations.")
+        return (f"## 📚 {resource['title']}\n\n"
+                f"{resource['snippet']}\n\n"
+                f"🔗 **Reference Source**: [{resource['title']}]({resource['url']}) *({resource['source']})*")
 
-    return (f"## 💡 Detailed Educational Guide: {topic_display}\n\n"
-            f"You asked: **\"{user_text.capitalize()}\"**\n\n"
-            f"### 🎯 Overview & Fundamental Principles:\n"
-            f"- **Definition & Context**: **{topic_display}** represents a vital concept requiring focused analysis and practical application.\n"
-            f"- **Core Mechanics**: Mastering **{topic_display}** involves connecting core theoretical principles to real-world problem-solving.\n\n"
-            f"### 🔍 Practical Application & Examples:\n"
-            f"- **Real-World Context**: **{topic_display}** is utilized across academic and technical fields to solve complex problems and analyze data.\n"
-            f"- **Educational Benefit**: Studying **{topic_display}** improves critical thinking and long-term retention.\n\n"
-            f"### 💡 Recommended Next Steps:\n"
-            f"- Ask me: *'Explain {topic_display} with a real-world code example'* or *'Simplify this concept further'*!\n"
-            f"- Click **'Simplify That'** or **'Explain Differently'** below for adaptive explanations.")
+    return (f"## 💡 Understanding {topic_display}\n\n"
+            f"**{topic_display}** is a key subject in modern learning and real-world applications. "
+            f"To get live dynamic responses, please ensure a valid Gemini API Key is configured in settings or `.env`.\n\n"
+            f"Would you like to explore another topic or quiz yourself on this subject?")
+
 
 def get_local_fallback_response(user_text, mode, has_image=False, history=[], image_data=None):
     user_text = refine_and_classify_human_prompt(user_text)
