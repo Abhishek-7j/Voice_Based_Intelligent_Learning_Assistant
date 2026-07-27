@@ -620,6 +620,8 @@ class APIKeyManager:
 
         return keys
 
+
+
     def mark_key_exhausted(self, key):
         if key:
             print(f"[APIKeyManager] API Key starting with '{key[:6]}...' marked as EXHAUSTED (Quota/429). Rotating key pool.")
