@@ -107,10 +107,17 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
-            stopSpeechPlayback(); // Instantly pause TTS player when user starts mic recording
+            stopSpeechPlayback(); // Instantly pause active TTS when user starts mic recording
             isRecording = true;
             micBtn.classList.add('recording');
             voiceVisualizer.style.display = 'flex';
+        };
+
+        recognition.onerror = (event) => {
+            console.warn("Speech recognition stream notice:", event.error);
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            voiceVisualizer.style.display = 'none';
         };
 
         recognition.onend = () => {
@@ -126,10 +133,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         recognition.onresult = (event) => {
-            userInput.value = event.results[0][0].transcript;
-            handleSendMessage();
+            const transcript = (event.results && event.results[0] && event.results[0][0]) ? event.results[0][0].transcript.trim() : "";
+            // Strict Validation: Ignore empty audio buffers, silence, or noise
+            if (transcript && transcript.length >= 2) {
+                userInput.value = transcript;
+                handleSendMessage();
+            } else {
+                console.log("Ignored empty speech buffer or silence threshold.");
+            }
         };
     }
+
 
 
     // --- Memory Toggle Listener ---

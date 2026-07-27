@@ -579,109 +579,204 @@ def fetch_online_ai_fallback(user_text, system_prompt="You are an expert educati
         print(f"Error fetching online fallback AI via POST: {e}")
     return None
 
+import time
+import socket
+
+class APIKeyManager:
+    """
+    Manages API key pooling, round-robin rotation, and quota exhaustion tracking for Google Gemini API keys.
+    """
+    def __init__(self):
+        self.exhausted_keys = {}  # {key: timestamp_of_exhaustion}
+        self.cooldown_seconds = 300  # 5 minutes cooldown for exhausted keys
+        self.current_index = 0
+
+    def get_all_keys(self, user_supplied_key=None):
+        keys = []
+        # 1. User supplied key or database key
+        if user_supplied_key and user_supplied_key.strip():
+            k = user_supplied_key.strip("'\" \t\r\n")
+            if k not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:
+                keys.append(k)
+
+        # 2. Comma-separated GEMINI_API_KEYS env variable
+        multi_keys = os.getenv("GEMINI_API_KEYS", "")
+        if multi_keys:
+            for k in multi_keys.split(','):
+                k_clean = k.strip("'\" \t\r\n")
+                if k_clean and k_clean not in keys:
+                    keys.append(k_clean)
+
+        # 3. Environment keys: GEMINI_API_KEY_1, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY
+        for i in range(1, 10):
+            env_k = os.getenv(f"GEMINI_API_KEY_{i}")
+            if env_k:
+                clean_env = env_k.strip("'\" \t\r\n")
+                if clean_env and clean_env not in keys:
+                    keys.append(clean_env)
+
+        primary_env = os.getenv("GEMINI_API_KEY")
+        if primary_env:
+            clean_pri = primary_env.strip("'\" \t\r\n")
+            if clean_pri and clean_pri not in keys:
+                keys.append(clean_pri)
+
+        return keys
+
+    def mark_key_exhausted(self, key):
+        if key:
+            print(f"[APIKeyManager] API Key starting with '{key[:6]}...' marked as EXHAUSTED (Quota/429). Rotating key pool.")
+            self.exhausted_keys[key] = time.time()
+
+
+    def get_valid_key(self, user_supplied_key=None):
+        all_keys = self.get_all_keys(user_supplied_key)
+        if not all_keys:
+            return None
+
+        now = time.time()
+        # Clean up cooled down keys
+        active_keys = [k for k in all_keys if now - self.exhausted_keys.get(k, 0) > self.cooldown_seconds]
+        
+        # If all keys are in cooldown, reset cooldowns to allow emergency retries
+        if not active_keys:
+            self.exhausted_keys.clear()
+            active_keys = all_keys
+
+        # Round-robin selection
+        self.current_index = self.current_index % len(active_keys)
+        selected_key = active_keys[self.current_index]
+        self.current_index = (self.current_index + 1) % len(active_keys)
+
+        return selected_key
+
+key_manager = APIKeyManager()
+
+
 def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor.", mode="Teacher", image_data=None, history=[]):
     """
     Calls Google Gemini API using official google-genai SDK or direct REST API fallback.
-    Supports multi-turn chat history context, Multimodal Vision, and text generation.
+    Implements Sliding Context Window (last 6 turns), Exponential Backoff (1s, 2s, 4s), and Key Rotation.
     """
     if not api_key:
         return None
 
-    # 1. Official google-genai SDK
-    try:
-        from google import genai
-        from google.genai import types
-        
-        client = genai.Client(api_key=api_key)
-        contents = []
-        
-        # Build chat history conversation turns
-        for msg in history:
-            role = "user" if msg['role'] == 'user' else "model"
+    # Requirement 1: Sliding Context Window (Retain only last 6 turns: 3 user turns + 3 assistant turns)
+    trimmed_history = history[-6:] if history else []
+
+    # Attempt execution with Exponential Backoff (3 attempts: 1s, 2s, 4s delay)
+    for attempt in range(3):
+        # 1. Official google-genai SDK
+        try:
+            from google import genai
+            from google.genai import types
+            
+            client = genai.Client(api_key=api_key)
+            contents = []
+            
+            # Build trimmed chat history conversation turns
+            for msg in trimmed_history:
+                role = "user" if msg['role'] == 'user' else "model"
+                contents.append(types.Content(
+                    role=role,
+                    parts=[types.Part.from_text(text=msg['content'])]
+                ))
+            
+            current_parts = []
+            if image_data:
+                try:
+                    from PIL import Image
+                    img_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
+                    img = Image.open(io.BytesIO(img_bytes))
+                    current_parts.append(img)
+                except Exception as e:
+                    print(f"Image decode error for Gemini: {e}")
+            
+            prompt_text = user_text if user_text else "Scan and analyze this uploaded document or image in detail."
+            current_parts.append(prompt_text)
+            
             contents.append(types.Content(
-                role=role,
-                parts=[types.Part.from_text(text=msg['content'])]
+                role="user",
+                parts=[types.Part.from_text(text=p) if isinstance(p, str) else p for p in current_parts]
             ))
-        
-        current_parts = []
-        if image_data:
+            
+            config = types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.7 if mode == "Creative" else 0.4,
+                max_output_tokens=3500
+            )
+            
+            for m_name in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest']:
+                try:
+                    res = client.models.generate_content(
+                        model=m_name,
+                        contents=contents,
+                        config=config
+                    )
+                    if res and res.text:
+                        return res.text
+                except Exception as model_err:
+                    err_str = str(model_err).lower()
+                    if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str:
+                        key_manager.mark_key_exhausted(api_key)
+                        break  # Break model loop to trigger retry/key rotation
+                    continue
+
+        except Exception as sdk_err:
+            err_str = str(sdk_err).lower()
+            if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str:
+                key_manager.mark_key_exhausted(api_key)
+                break
+
+        # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
+        for model_id in ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']:
             try:
-                from PIL import Image
-                img_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
-                img = Image.open(io.BytesIO(img_bytes))
-                current_parts.append(img)
-            except Exception as e:
-                print(f"Image decode error for Gemini: {e}")
-        
-        prompt_text = user_text if user_text else "Scan and analyze this uploaded document or image in detail."
-        current_parts.append(prompt_text)
-        
-        contents.append(types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=p) if isinstance(p, str) else p for p in current_parts]
-        ))
-        
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=0.7 if mode == "Creative" else 0.4,
-            max_output_tokens=3500
-        )
-        
-        for m_name in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest']:
-            try:
-                res = client.models.generate_content(
-                    model=m_name,
-                    contents=contents,
-                    config=config
-                )
-                if res and res.text:
-                    return res.text
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
+                
+                contents_payload = []
+                for msg in trimmed_history:
+                    role = "user" if msg['role'] == 'user' else "model"
+                    contents_payload.append({
+                        "role": role,
+                        "parts": [{"text": msg['content']}]
+                    })
+                
+                current_parts_payload = []
+                if image_data:
+                    raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
+                    mime = "image/png" if "data:image/png" in image_data else "image/jpeg"
+                    current_parts_payload.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
+                current_parts_payload.append({"text": user_text})
+                
+                contents_payload.append({
+                    "role": "user",
+                    "parts": current_parts_payload
+                })
+                
+                payload = json.dumps({
+                    "contents": contents_payload,
+                    "generationConfig": {"maxOutputTokens": 3000}
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    candidates = data.get('candidates', [])
+                    if candidates:
+                        p_parts = candidates[0].get('content', {}).get('parts', [])
+                        if p_parts and 'text' in p_parts[0]:
+                            return p_parts[0]['text']
+            except urllib.error.HTTPError as http_err:
+                if http_err.code in [429, 503]:
+                    key_manager.mark_key_exhausted(api_key)
+                    break
             except Exception:
                 continue
-    except Exception:
-        pass
 
-    # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
-    for model_id in ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
-            
-            contents_payload = []
-            for msg in history:
-                role = "user" if msg['role'] == 'user' else "model"
-                contents_payload.append({
-                    "role": role,
-                    "parts": [{"text": msg['content']}]
-                })
-            
-            current_parts_payload = []
-            if image_data:
-                raw_b64 = image_data.split(',')[1] if ',' in image_data else image_data
-                mime = "image/png" if "data:image/png" in image_data else "image/jpeg"
-                current_parts_payload.append({"inline_data": {"mime_type": mime, "data": raw_b64}})
-            current_parts_payload.append({"text": user_text})
-            
-            contents_payload.append({
-                "role": "user",
-                "parts": current_parts_payload
-            })
-            
-            payload = json.dumps({
-                "contents": contents_payload,
-                "generationConfig": {"maxOutputTokens": 3000}
-            }).encode('utf-8')
-            req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                candidates = data.get('candidates', [])
-                if candidates:
-                    p_parts = candidates[0].get('content', {}).get('parts', [])
-                    if p_parts and 'text' in p_parts[0]:
-                        return p_parts[0]['text']
-        except Exception:
-            continue
+        # Exponential backoff delay before attempt retry (1s, 2s, 4s)
+        time.sleep(2 ** attempt)
 
     return None
+
 
 
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
@@ -716,13 +811,19 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
 
 
 
-    # 1. Attempt Google Gemini API if key is provided
-    if api_key and api_key not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:
-        sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
-        gemini_res = call_gemini_api(api_key, user_text, sys_prompt, mode, image_data, history)
-        if gemini_res:
-            return gemini_res
+    # 1. Attempt Google Gemini API using Key Pooling & Rotation
+    sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
+    all_keys = key_manager.get_all_keys(api_key)
+    
+    if all_keys:
+        for _ in range(len(all_keys)):
+            current_pooled_key = key_manager.get_valid_key(api_key)
+            if current_pooled_key:
+                gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
+                if gemini_res:
+                    return gemini_res
 
     # 2. Keyless Academic & Resource Engine (Fallback for offline/keyless states)
     return get_local_fallback_response(user_text, mode, has_image, history, image_data)
+
 
