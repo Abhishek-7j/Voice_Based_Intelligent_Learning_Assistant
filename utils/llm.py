@@ -653,15 +653,27 @@ key_manager = APIKeyManager()
 def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor.", mode="Teacher", image_data=None, history=[]):
     """
     Calls Google Gemini API using official google-genai SDK or direct REST API fallback.
-    Implements Sliding Context Window (last 6 turns), Exponential Backoff (1s, 2s, 4s), and Key Rotation.
+    Implements dynamic model routing (gemini-2.5-flash-lite vs gemini-2.5-flash),
+    capping context history to last 8 messages (4 turns), and 3-attempt exponential backoff.
     """
     if not api_key:
         return None
 
-    # Requirement 1: Sliding Context Window (Retain only last 6 turns: 3 user turns + 3 assistant turns)
-    trimmed_history = history[-6:] if history else []
+    # Requirement 3: Context Sliding Window (Capped at last 8 messages / 4 turns)
+    trimmed_history = history[-8:] if history else []
 
-    # Attempt execution with Exponential Backoff (3 attempts: 1s, 2s, 4s delay)
+    # Requirement 1: Online Dynamic Model Routing
+    visual_keywords = ["draw", "generate image", "diagram of", "photo of", "picture of", "show me a photo", "show me a picture", "create a drawing"]
+    user_text_lower = user_text.lower()
+    
+    if any(k in user_text_lower for k in visual_keywords):
+        # Route strictly to multimodal/vision-capable endpoints
+        models_to_attempt = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+    else:
+        # Route strictly to lightweight endpoints to conserve token quota and minimize latency
+        models_to_attempt = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash']
+
+    # Requirement 2: Automatic Fallback & Retry (Up to 3 attempts with exponential delays)
     for attempt in range(3):
         # 1. Official google-genai SDK
         try:
@@ -703,7 +715,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                 max_output_tokens=3500
             )
             
-            for m_name in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest']:
+            for m_name in models_to_attempt:
                 try:
                     res = client.models.generate_content(
                         model=m_name,
@@ -714,19 +726,19 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                         return res.text
                 except Exception as model_err:
                     err_str = str(model_err).lower()
-                    if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str:
+                    if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str or "500" in err_str or "503" in err_str:
                         key_manager.mark_key_exhausted(api_key)
                         break  # Break model loop to trigger retry/key rotation
                     continue
 
         except Exception as sdk_err:
             err_str = str(sdk_err).lower()
-            if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str:
+            if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str or "500" in err_str or "503" in err_str:
                 key_manager.mark_key_exhausted(api_key)
                 break
 
         # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
-        for model_id in ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']:
+        for model_id in models_to_attempt:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
                 
@@ -763,16 +775,17 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                         if p_parts and 'text' in p_parts[0]:
                             return p_parts[0]['text']
             except urllib.error.HTTPError as http_err:
-                if http_err.code in [429, 503]:
+                if http_err.code in [429, 500, 503]:
                     key_manager.mark_key_exhausted(api_key)
                     break
             except Exception:
                 continue
 
-        # Exponential backoff delay before attempt retry (1s, 2s, 4s)
+        # Exponential backoff delay before retry (1s, 2s, 4s)
         time.sleep(2 ** attempt)
 
     return None
+
 
 
 def call_ollama_api(user_text, system_prompt, mode, history=[]):
@@ -848,9 +861,13 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
                 gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
                 if gemini_res:
                     return gemini_res
+        
+        # Requirement 4: User-Friendly Voice Error Handling on full failure
+        return "I'm having a brief connection issue, please try asking again in a moment."
 
     # 3. Third Priority: Keyless Local Academic Engine (Offline Fallback)
     return get_local_fallback_response(user_text, mode, has_image, history, image_data)
+
 
 
 
