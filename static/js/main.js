@@ -357,7 +357,17 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.textContent = text;
         }
 
-
+        // Add Timestamp at the end of the prompt or answer
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timeSpan = document.createElement('div');
+        timeSpan.className = 'message-time';
+        timeSpan.style.fontSize = '0.72rem';
+        timeSpan.style.opacity = '0.6';
+        timeSpan.style.marginTop = '6px';
+        timeSpan.style.textAlign = role === 'user' ? 'right' : 'left';
+        timeSpan.textContent = timeStr;
+        messageDiv.appendChild(timeSpan);
         
         chatHistory.appendChild(messageDiv);
         chatHistory.scrollTo({ top: chatHistory.scrollHeight, behavior: 'smooth' });
@@ -435,8 +445,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
-            if (response.status === 502 || response.status === 503) {
-                appendMessage('ai', "⏳ <strong>Server Initializing:</strong> Render free tier is waking up or deploying updates. Please wait 10-15 seconds and try sending your question again!", true);
+            if (!response.ok) {
+                if (response.status === 502 || response.status === 503 || response.status === 504) {
+                    appendMessage('ai', "⏳ <strong>Server Initializing / Building Update:</strong> Render container is compiling code or starting up. Please wait 10-15 seconds and try sending your question again!", true);
+                } else {
+                    appendMessage('ai', `⚠️ <strong>Server Notice (${response.status}):</strong> Unable to complete request. Please refresh or try again in a moment.`, true);
+                }
                 return;
             }
 
@@ -472,11 +486,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadConversations(); // Reload sidebar sessions
             }
         } catch (error) {
+            console.error("Network or connection error:", error);
             appendMessage('ai', "⏳ Server is connecting or building update. Please wait 10-15 seconds and try again.", true);
         } finally {
             thinkingIndicator.style.display = 'none';
         }
     }
+
 
 
     // --- Sidebar Session Loading ---
