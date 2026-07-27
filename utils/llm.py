@@ -652,6 +652,8 @@ class APIKeyManager:
 key_manager = APIKeyManager()
 
 
+import gc
+
 def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor.", mode="Teacher", image_data=None, history=[]):
     """
     Calls Google Gemini API using official google-genai SDK or direct REST API fallback.
@@ -725,6 +727,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                         config=config
                     )
                     if res and res.text:
+                        gc.collect()
                         return res.text
                 except Exception as model_err:
                     err_str = str(model_err).lower()
@@ -775,6 +778,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                     if candidates:
                         p_parts = candidates[0].get('content', {}).get('parts', [])
                         if p_parts and 'text' in p_parts[0]:
+                            gc.collect()
                             return p_parts[0]['text']
             except urllib.error.HTTPError as http_err:
                 if http_err.code in [429, 500, 503]:
@@ -786,7 +790,9 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
         # Exponential backoff delay before retry (1s, 2s, 4s)
         time.sleep(2 ** attempt)
 
+    gc.collect()
     return None
+
 
 
 

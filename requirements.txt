@@ -1,6 +1,5 @@
 flask
 google-genai
-google-generativeai
 gTTS
 python-dotenv
 flask-cors
