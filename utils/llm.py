@@ -775,11 +775,37 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
     return None
 
 
+def call_ollama_api(user_text, system_prompt, mode, history=[]):
+    """
+    Calls a local open-source Ollama server running on http://localhost:11434.
+    Queries the llama3.2 lightweight model offline with zero API keys or rate limits.
+    """
+    try:
+        url = "http://localhost:11434/api/chat"
+        messages = [{"role": "system", "content": system_prompt}]
+        for msg in history[-6:]:
+            messages.append({"role": msg['role'], "content": msg['content']})
+        messages.append({"role": "user", "content": user_text})
+
+        payload = json.dumps({
+            "model": "llama3.2",
+            "messages": messages,
+            "stream": False
+        }).encode('utf-8')
+
+        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+        with urllib.request.urlopen(req, timeout=3) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return data.get('message', {}).get('content', '')
+    except Exception as e:
+        print(f"[Ollama] Local connection not active, trying fallback: {e}")
+        return None
+
 
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     """
-    Generates a professional, AI Bot companion response using Google Gemini API.
-    Operates keylessly by default with zero requirement, or uses user-provided Gemini API key.
+    Generates a response using local open-source Ollama (llama3.2) by default,
+    falling back to Gemini API or local academic engines if offline.
     """
     # Refine prompt using AI Bot Intent Engine
     user_text = refine_and_classify_human_prompt(user_text)
@@ -806,12 +832,15 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
         "Quiz": "You are an interactive AI Assistant for studying. You are a MULTI-PERFORMER. Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
     }
 
-
-
-    # 1. Attempt Google Gemini API using Key Pooling & Rotation
     sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
+
+    # 1. First Priority: Try Local Open-Source Ollama Server (100% Free & Offline)
+    ollama_res = call_ollama_api(user_text, sys_prompt, mode, history)
+    if ollama_res:
+        return ollama_res
+
+    # 2. Second Priority: Try Google Gemini API key pool
     all_keys = key_manager.get_all_keys(api_key)
-    
     if all_keys:
         for _ in range(len(all_keys)):
             current_pooled_key = key_manager.get_valid_key(api_key)
@@ -820,7 +849,8 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
                 if gemini_res:
                     return gemini_res
 
-    # 2. Keyless Academic & Resource Engine (Fallback for offline/keyless states)
+    # 3. Third Priority: Keyless Local Academic Engine (Offline Fallback)
     return get_local_fallback_response(user_text, mode, has_image, history, image_data)
+
 
 
