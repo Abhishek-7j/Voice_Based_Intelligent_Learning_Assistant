@@ -544,10 +544,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             item.dataset.id = conv.id;
 
+            item.addEventListener('click', () => selectConversation(conv.id, conv.mode));
+
             const titleSpan = document.createElement('span');
             titleSpan.className = 'history-item-title';
             titleSpan.textContent = conv.title || "Chat Session";
-            titleSpan.addEventListener('click', () => selectConversation(conv.id, conv.mode));
 
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'history-item-delete';
@@ -562,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             historyList.appendChild(item);
         });
     }
+
 
     async function selectConversation(convId, mode) {
         currentConversationId = convId;

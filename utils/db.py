@@ -128,11 +128,12 @@ def get_history(conv_id):
 def get_all_conversations(user_id=None):
     conn = get_db_connection()
     if user_id:
-        rows = conn.execute("SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
+        rows = conn.execute("SELECT * FROM conversations WHERE user_id = ? OR user_id = 1 OR user_id IS NULL ORDER BY created_at DESC", (user_id,)).fetchall()
     else:
         rows = conn.execute("SELECT * FROM conversations ORDER BY created_at DESC").fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
 
 def delete_conversation(conv_id):
     conn = get_db_connection()
