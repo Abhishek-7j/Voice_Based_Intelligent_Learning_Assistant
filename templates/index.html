@@ -119,6 +119,22 @@
                             <option value="onyx">Onyx (Masculine)</option>
                         </select>
                     </div>
+                    <div class="setting-item flex-col">
+                        <span>Target Language</span>
+                        <select id="language-select" class="custom-select">
+                            <option value="auto" selected>🌐 Auto-Detect (Any Language)</option>
+                            <option value="en-US">🇺🇸 English</option>
+                            <option value="te-IN">🇮🇳 Telugu (తెలుగు)</option>
+                            <option value="hi-IN">🇮🇳 Hindi (हिंदी)</option>
+                            <option value="ta-IN">🇮🇳 Tamil (தமிழ்)</option>
+                            <option value="kn-IN">🇮🇳 Kannada (కన్నడ)</option>
+                            <option value="mr-IN">🇮🇳 Marathi (मराठी)</option>
+                            <option value="es-ES">🇪🇸 Spanish (Español)</option>
+                            <option value="fr-FR">🇫🇷 French (Français)</option>
+                            <option value="de-DE">🇩🇪 German (Deutsch)</option>
+                            <option value="ja-JP">🇯🇵 Japanese (日本語)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="section-label">Accessibility Tools</div>
@@ -163,10 +179,24 @@
                     <div class="current-mode-label" id="current-mode-display">Learning Assistant</div>
                     <span class="assistant-status-pill"><i class="fas fa-circle online-dot"></i> Learning Engine Active</span>
                 </div>
-                <div class="nav-right">
+                <div class="nav-right" style="display: flex; align-items: center; gap: 12px;">
+                    <select id="top-language-select" class="custom-select top-lang-dropdown" title="Select Speech & AI Language" style="padding: 4px 10px; font-size: 0.82rem; border-radius: 18px; width: auto; background: rgba(255,255,255,0.06);">
+                        <option value="auto" selected>🌐 Auto-Detect Language</option>
+                        <option value="en-US">🇺🇸 English</option>
+                        <option value="te-IN">🇮🇳 Telugu (తెలుగు)</option>
+                        <option value="hi-IN">🇮🇳 Hindi (हिंदी)</option>
+                        <option value="ta-IN">🇮🇳 Tamil (தமிழ்)</option>
+                        <option value="kn-IN">🇮🇳 Kannada (కన్నడ)</option>
+                        <option value="mr-IN">🇮🇳 Marathi (मराठी)</option>
+                        <option value="es-ES">🇪🇸 Spanish (Español)</option>
+                        <option value="fr-FR">🇫🇷 French (Français)</option>
+                        <option value="de-DE">🇩🇪 German (Deutsch)</option>
+                        <option value="ja-JP">🇯🇵 Japanese (日本語)</option>
+                    </select>
                     <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
                 </div>
             </header>
+
 
             <div id="chat-history" class="chat-container">
                 <div class="welcome-section" id="welcome-section">

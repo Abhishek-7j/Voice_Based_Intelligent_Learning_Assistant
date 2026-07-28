@@ -114,6 +114,7 @@ def ask():
         conv_id = data.get('conversation_id') or str(uuid.uuid4())
         voice = data.get('voice', 'nova')
         image_data = data.get('image_data') # base64 string
+        language = data.get('language', 'auto')
         
         if not user_text:
             return jsonify({'error': 'Empty message'}), 400
@@ -122,7 +123,7 @@ def ask():
         history = get_history(conv_id)
         
         # Get AI response
-        ai_response_text = get_ai_response(user_text, history, mode, image_data)
+        ai_response_text = get_ai_response(user_text, history, mode, image_data, language)
         
         if "CONFIG_ERROR:" in ai_response_text:
             return jsonify({'error': 'configuration_needed', 'message': ai_response_text}), 401
@@ -135,7 +136,8 @@ def ask():
         save_message(conv_id, 'assistant', ai_response_text, title, mode)
         
         # Generate Audio (guaranteed non-blocking & fast)
-        audio_url = text_to_speech(ai_response_text)
+        audio_url = text_to_speech(ai_response_text, language=language)
+
         
         return jsonify({
             'response': ai_response_text,

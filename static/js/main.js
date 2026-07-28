@@ -449,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const selectedVoice = voiceSelect.value;
+            const selectedLanguage = (languageSelect && languageSelect.value !== 'auto') ? languageSelect.value : (topLanguageSelect ? topLanguageSelect.value : 'auto');
             const response = await fetch('/ask', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -457,9 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     mode: currentMode, 
                     conversation_id: currentConversationId,
                     voice: selectedVoice,
-                    image_data: imageToSend
+                    image_data: imageToSend,
+                    language: selectedLanguage
                 })
             });
+
 
             if (!response.ok) {
                 if (response.status === 502 || response.status === 503 || response.status === 504) {
@@ -935,11 +938,33 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.addEventListener('click', handleSendMessage);
     userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
 
+    // --- Multilingual Language Selectors ---
+    const languageSelect = document.getElementById('language-select');
+    const topLanguageSelect = document.getElementById('top-language-select');
+
+    function syncLanguageSelection(val) {
+        if (languageSelect) languageSelect.value = val;
+        if (topLanguageSelect) topLanguageSelect.value = val;
+        if (recognition) {
+            recognition.lang = (val === 'auto' || !val) ? 'en-US' : val;
+        }
+    }
+
+    if (languageSelect) {
+        languageSelect.addEventListener('change', (e) => syncLanguageSelection(e.target.value));
+    }
+    if (topLanguageSelect) {
+        topLanguageSelect.addEventListener('change', (e) => syncLanguageSelection(e.target.value));
+    }
+
     micBtn.addEventListener('click', () => {
         if (!recognition) return alert("Speech recognition not supported in this browser.");
         stopSpeechPlayback(); // Instantly stop active TTS when tapping mic
+        const activeLang = (languageSelect && languageSelect.value !== 'auto') ? languageSelect.value : (topLanguageSelect ? topLanguageSelect.value : 'en-US');
+        recognition.lang = (activeLang === 'auto' || !activeLang) ? 'en-US' : activeLang;
         isRecording ? recognition.stop() : recognition.start();
     });
+
 
     // --- Adaptive Pacing Quick Action Chips (Section 5.3 & 7.3 Project Report) ---
     const chipBtns = document.querySelectorAll('.chip-btn');

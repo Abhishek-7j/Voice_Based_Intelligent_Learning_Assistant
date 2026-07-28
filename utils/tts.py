@@ -82,9 +82,10 @@ def cleanup_old_audio(folder='static/audio', max_files=10):
     except Exception:
         pass
 
-def text_to_speech(text, folder='static/audio'):
+def text_to_speech(text, folder='static/audio', language='auto'):
     """
     Converts text to speech using gTTS (Google Text-to-Speech).
+    Automatically maps target language codes (te for Telugu, hi for Hindi, es for Spanish, etc.)
     Operates 100% keyless with zero API key dependencies and zero quota limits.
     """
     if not os.path.exists(folder):
@@ -103,11 +104,32 @@ def text_to_speech(text, folder='static/audio'):
     # Use first ~600 chars for rapid speech preview (under 1 second generation)
     speech_snippet = cleaned_text[:600]
     
+    # Determine gTTS language code
+    lang_map = {
+        'te-IN': 'te',
+        'hi-IN': 'hi',
+        'ta-IN': 'ta',
+        'kn-IN': 'kn',
+        'mr-IN': 'mr',
+        'es-ES': 'es',
+        'fr-FR': 'fr',
+        'de-DE': 'de',
+        'ja-JP': 'ja',
+        'en-US': 'en'
+    }
+    gtts_lang = lang_map.get(language, 'en')
+
     # Primary Keyless gTTS Speech Generator
     try:
-        tts = gTTS(text=speech_snippet, lang='en')
+        tts = gTTS(text=speech_snippet, lang=gtts_lang)
         tts.save(filepath)
         return f"/static/audio/{filename}"
     except Exception as e:
-        print(f"Error in keyless gTTS generation: {e}")
-        return None
+        print(f"Error in keyless gTTS generation ({gtts_lang}): {e}")
+        try:
+            tts = gTTS(text=speech_snippet, lang='en')
+            tts.save(filepath)
+            return f"/static/audio/{filename}"
+        except Exception:
+            return None
+

@@ -934,9 +934,10 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
     return None
 
 
-def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
+def get_ai_response(user_text, history=[], mode="Teacher", image_data=None, language="auto"):
     """
     Generates a response using Google Gemini API key pool, falling back to local academic engines if offline.
+    Supports auto-detecting and responding in any target language (Telugu, Hindi, Spanish, French, German, Japanese, English, etc.).
     """
     # Refine prompt using AI Bot Intent Engine
     user_text = refine_and_classify_human_prompt(user_text)
@@ -946,11 +947,14 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
     api_key = raw_key.strip("'\" \t\r\n") if raw_key else None
     has_image = image_data is not None
 
+    lang_instruction = "Automatically detect the language of the user's prompt (e.g. Telugu, Hindi, Spanish, French, German, Japanese, English, Tamil, Kannada, Marathi, etc.) and ALWAYS respond in the exact same language." if language == 'auto' else f"Respond natively in the requested target language code ({language})."
+
     system_prompts = {
         "Teacher": (
             "You are an AI Assistant and educational companion built to teach users whatever they want to learn. "
             "Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. "
             "When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your Assistant'. "
+            f"MULTILINGUAL MANDATE: You are a fluent multilingual assistant. {lang_instruction} Respond with natural native grammar, rich vocabulary, and complete educational accuracy.\n"
             "You are a MULTI-PERFORMER: do not limit yourself to text. You MUST output real-time photos, diagrams, and video explanations directly in your responses whenever helpful or requested:\n"
             "1. **Photos & Diagrams**: When asked for photos, visual illustrations, or diagrams, output an ultra-realistic photograph or clear educational illustration using this EXACT markdown format:\n"
             "   `![Description](https://image.pollinations.ai/prompt/high+resolution+detailed+8k+realistic+photo+or+diagram+of+{url_encoded_short_description}?width=800&height=500&nologo=true)`\n"
@@ -958,12 +962,13 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
             "   `<a href=\"https://www.youtube.com/results?search_query={url_encoded_search_query}+educational+explanation\" target=\"_blank\" style=\"text-decoration:none;\"><div class=\"youtube-card\" style=\"display:flex; align-items:center; gap:12px; background:rgba(255,0,0,0.1); border:1px solid rgba(255,0,0,0.3); padding:15px; border-radius:12px; margin:15px 0; color:#ff8b8b; transition:all 0.3s ease;\"><i class=\"fab fa-youtube\" style=\"font-size:2.5rem; color:#ff0000;\"></i><div><strong style=\"display:block; font-size:1rem; color:#ffffff;\">Watch Video Lessons on YouTube</strong><span style=\"font-size:0.8rem; opacity:0.85;\">Search: \"{search_query_here}\"</span></div></div></a>`\n"
             "Provide direct, highly accurate, structured explanations with real-world examples."
         ),
-        "Coach": "You are an AI Assistant and project planner. You are a MULTI-PERFORMER. Never identify yourself as 'Gemini'. When asked for photos, diagrams, or videos, output them using the exact formats listed above. Help users structure complex tasks step-by-step.",
-        "Creative": "You are an AI Assistant and creative partner. You are a MULTI-PERFORMER. Never identify yourself as 'Gemini'. When asked for photos, diagrams, or videos, output them using the exact formats listed above. Inspire creative storytelling, design ideas, and essay writing.",
-        "Quiz": "You are an interactive AI Assistant for studying. You are a MULTI-PERFORMER. Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
+        "Coach": f"You are an AI Assistant and project planner. You are a MULTI-PERFORMER. {lang_instruction} Help users structure complex tasks step-by-step.",
+        "Creative": f"You are an AI Assistant and creative partner. You are a MULTI-PERFORMER. {lang_instruction} Inspire creative storytelling, design ideas, and essay writing.",
+        "Quiz": f"You are an interactive AI Assistant for studying. You are a MULTI-PERFORMER. {lang_instruction} Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
     }
 
     sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
+
 
     # 1. Primary Option: Try Google Gemini API key pool
     all_keys = key_manager.get_all_keys(api_key)
