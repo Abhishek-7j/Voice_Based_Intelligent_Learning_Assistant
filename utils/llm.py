@@ -897,7 +897,8 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
             }).encode('utf-8')
             req = urllib.request.Request(url, data=payload, headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {groq_key.strip()}"
+                "Authorization": f"Bearer {groq_key.strip()}",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
             }, method='POST')
             with urllib.request.urlopen(req, timeout=8) as response:
                 data = json.loads(response.read().decode('utf-8'))
@@ -918,7 +919,8 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
             }).encode('utf-8')
             req = urllib.request.Request(url, data=payload, headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {openrouter_key.strip()}"
+                "Authorization": f"Bearer {openrouter_key.strip()}",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
             }, method='POST')
             with urllib.request.urlopen(req, timeout=8) as response:
                 data = json.loads(response.read().decode('utf-8'))
@@ -927,6 +929,7 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                     return choices[0]['message'].get('content')
         except Exception as e:
             print(f"OpenRouter API notice: {e}")
+
 
     return None
 
