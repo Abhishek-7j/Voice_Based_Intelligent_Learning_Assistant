@@ -733,14 +733,16 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                     err_str = str(model_err).lower()
                     if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str or "500" in err_str or "503" in err_str:
                         key_manager.mark_key_exhausted(api_key)
-                        break  # Break model loop to trigger retry/key rotation
+                        gc.collect()
+                        return None  # Return immediately so next pooled key is tried with zero delay
                     continue
 
         except Exception as sdk_err:
             err_str = str(sdk_err).lower()
             if "429" in err_str or "resourceexhausted" in err_str or "quota" in err_str or "500" in err_str or "503" in err_str:
                 key_manager.mark_key_exhausted(api_key)
-                break
+                gc.collect()
+                return None  # Return immediately so next pooled key is tried with zero delay
 
         # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
         for model_id in models_to_attempt:
@@ -772,7 +774,7 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                     "generationConfig": {"maxOutputTokens": 3000}
                 }).encode('utf-8')
                 req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=5) as response:
                     data = json.loads(response.read().decode('utf-8'))
                     candidates = data.get('candidates', [])
                     if candidates:
@@ -783,15 +785,17 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
             except urllib.error.HTTPError as http_err:
                 if http_err.code in [429, 500, 503]:
                     key_manager.mark_key_exhausted(api_key)
-                    break
+                    gc.collect()
+                    return None  # Return immediately so next pooled key is tried with zero delay
             except Exception:
                 continue
 
-        # Exponential backoff delay before retry (1s, 2s, 4s)
-        time.sleep(2 ** attempt)
+        # Exponential backoff delay only for transient network retry on the same key
+        time.sleep(1)
 
     gc.collect()
     return None
+
 
 
 
