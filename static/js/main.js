@@ -92,14 +92,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let recognition;
 
     function stopSpeechPlayback() {
+        if ('speechSynthesis' in window) {
+            try {
+                window.speechSynthesis.pause();
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.resume();
+                window.speechSynthesis.cancel();
+            } catch(e) {}
+        }
         if (ttsPlayer) {
-            ttsPlayer.pause();
-            ttsPlayer.currentTime = 0;
+            try {
+                ttsPlayer.pause();
+                ttsPlayer.currentTime = 0;
+            } catch(e) {}
         }
         if (audioControlBar) {
             audioControlBar.style.display = 'none';
         }
     }
+
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
@@ -808,16 +819,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function stopSpeechPlayback() {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
-        if (ttsPlayer) {
-            ttsPlayer.pause();
-            ttsPlayer.currentTime = 0;
-        }
-        if (audioControlBar) audioControlBar.style.display = 'none';
-    }
 
     // --- Persistent Client-Server Sync Engine ---
     async function syncClientWithServer() {

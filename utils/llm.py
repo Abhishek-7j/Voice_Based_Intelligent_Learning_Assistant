@@ -464,7 +464,33 @@ def refine_and_classify_human_prompt(user_text):
 
     return cleaned
 
-def search_web_resources(query):
+def extract_topic_from_history(history=[]):
+    """
+    Extracts the core subject topic from conversation history for follow-up prompts.
+    """
+    if not history:
+        return ""
+    
+    # Search backwards for the last subject in previous turns
+    for msg in reversed(history):
+        content = msg.get('content', '')
+        # Check headings in AI response (e.g., "## Quantum Computing")
+        headings = re.findall(r'#+\s*([^\n]+)', content)
+        if headings:
+            clean_head = headings[0].replace('⚛️', '').replace('🧬', '').replace('💡', '').replace('📚', '').replace('⚙️', '').strip()
+            if clean_head and len(clean_head) > 3:
+                return clean_head
+
+        # Check user prompt subject
+        if msg.get('role') == 'user':
+            stop_words = {"tell", "me", "about", "what", "is", "a", "an", "the", "can", "you", "explain", "how", "does", "work", "differently", "analogy", "that", "this", "concept", "of"}
+            words = [w for w in re.findall(r'\b[A-Za-z]{3,}\b', content) if w.lower() not in stop_words]
+            if words:
+                return " ".join(words[:3])
+
+    return ""
+
+def search_web_resources(query, history=[]):
     """
     Performs real-time web search & resource analysis to retrieve live, accurate,
     authoritative information on any topic in the world.
@@ -482,10 +508,21 @@ def search_web_resources(query):
 
     clean_query = query.strip()
 
+    # Check if query is a follow-up referring to previous context
+    follow_up_keywords = ["that", "this", "it", "differently", "analogy", "example", "simplification", "simplify", "more", "details"]
+    is_follow_up = any(k in clean_query.lower() for k in follow_up_keywords)
+    
+    extracted_context_topic = ""
+    if is_follow_up and history:
+        extracted_context_topic = extract_topic_from_history(history)
+
+    target_subject = extracted_context_topic if extracted_context_topic else clean_query
+
     # Extract core subject keyword
-    stop_words = {"tell", "me", "about", "what", "is", "a", "an", "the", "can", "you", "explain", "how", "does", "work"}
-    words = [w for w in clean_query.split() if w.lower() not in stop_words]
-    core_topic = " ".join(words).capitalize() if words else clean_query
+    stop_words = {"tell", "me", "about", "what", "is", "a", "an", "the", "can", "you", "explain", "how", "does", "work", "differently", "analogy", "using", "real-world", "concept", "of"}
+    words = [w for w in target_subject.split() if w.lower() not in stop_words]
+    core_topic = " ".join(words).capitalize() if words else target_subject
+
 
     # 1. Direct Wikipedia Page Summary lookup (e.g. "Chicken", "Photosynthesis", "Quantum Computing")
     try:
@@ -672,10 +709,11 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
     
     if any(k in user_text_lower for k in visual_keywords):
         # Route strictly to multimodal/vision-capable endpoints
-        models_to_attempt = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+        models_to_attempt = ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
     else:
-        # Route strictly to lightweight endpoints to conserve token quota and minimize latency
-        models_to_attempt = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash']
+        # Route strictly to high-capacity and fast endpoints
+        models_to_attempt = ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-2.5-flash-lite', 'gemini-2.0-flash']
+
 
     # Requirement 2: Automatic Fallback & Retry (Up to 3 attempts with exponential delays)
     for attempt in range(3):
