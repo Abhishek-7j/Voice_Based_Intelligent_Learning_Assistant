@@ -291,11 +291,12 @@ def get_base_fallback_response(user_text, mode):
                 "- **Calculus Derivative**: `f'(x) = lim (h->0) [f(x+h) - f(x)] / h` (Measures rate of change)")
 
     # 8. Study Tips / Exams
-    if any(k in text for k in ["study", "exam", "learn", "technique", "tips"]):
+    if any(k in text for k in ["study tips", "study technique", "exam tips", "how to study", "active recall", "pomodoro"]):
         return ("## 📚 Top Scientific Study Techniques\n\n"
                 "- ⏱️ **Pomodoro Method**: 25 mins deep work, 5 mins rest. Prevents burnout.\n"
                 "- 🔄 **Active Recall**: Self-testing locks information into long-term memory faster than passive re-reading.\n"
                 "- 🗓️ **Spaced Repetition**: Reviewing material at expanding intervals (1d, 3d, 1w) maximizes retention.")
+
 
     # 9. Code / Python / Programming
     if any(k in text for k in ["code", "python", "program", "function", "software"]):
@@ -322,6 +323,29 @@ def get_base_fallback_response(user_text, mode):
                 "- **1944**: D-Day Allied landings liberate Western Europe.\n"
                 "- **1945**: End of WWII and founding of the United Nations.")
 
+    # 1. Machine Learning & AI
+    if any(k in text for k in ["machine learning", "deep learning", "neural network", "algorithm", "data science"]):
+        return ("## 🤖 Deep Dive into Machine Learning\n\n"
+                "Machine Learning (ML) is a core branch of artificial intelligence where algorithms analyze data patterns to make predictions without explicit programming.\n\n"
+                "### 🔑 3 Core Paradigms of Machine Learning:\n"
+                "1. **Supervised Learning**: Models trained on labeled datasets (e.g., Classification, Linear & Logistic Regression).\n"
+                "2. **Unsupervised Learning**: Finding hidden patterns in unlabeled data (e.g., K-Means Clustering, Principal Component Analysis).\n"
+                "3. **Reinforcement Learning**: Agents learn optimal actions via reward signals in dynamic environments (e.g., Q-Learning, Deep Q Networks).\n\n"
+                "### 📊 Standard ML Development Pipeline:\n"
+                "`Data Collection → Preprocessing → Feature Engineering → Model Training → Evaluation → Deployment`")
+
+    # 2. Movies & Cinema Lists
+    if any(k in text for k in ["movie", "movies", "film", "cinema", "telugu"]):
+        return ("## 🎬 Major Cinema Releases & Upcoming Titles (2025)\n\n"
+                "Here are key major film releases and highly anticipated titles:\n\n"
+                "1. **Game Changer** – Action/Political Drama\n"
+                "2. **Vishwambhara** – Socio-Fantasy Epic\n"
+                "3. **Hari Hara Veera Mallu** – Historical Action Drama\n"
+                "4. **SSMB29** – Globetrotting Jungle Adventure\n"
+                "5. **Thandel** – Romantic Action Drama\n"
+                "6. **Devara: Part 2** – High-Seas Action Drama\n\n"
+                "💡 *Tip: For real-time AI conversation and detailed movie reviews, add a fresh key to your settings!*")
+
     # 11. Clean Universal Dynamic Response Engine
     stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show", "give", "help"}
     raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
@@ -340,9 +364,12 @@ def get_base_fallback_response(user_text, mode):
                 f"Exploring **{topic_display}** offers fascinating real-world perspectives and natural beauty. "
                 f"Would you like to learn more details about this topic?")
 
-    return (f"## 💡 {topic_display}\n\n"
-            f"**{topic_display}** is an essential concept with wide-ranging real-world applications. "
-            f"Would you like to explore specific details, key examples, or take a quiz on this topic?")
+    return (f"## 📚 Overview: {topic_display}\n\n"
+            f"Here is a structured overview of **{topic_display}**:\n\n"
+            f"- **Core Subject**: Key principles and practical insights relating to {topic_display}.\n"
+            f"- **Applications**: Widely studied across academic, technical, and real-world domains.\n\n"
+            f"Would you like to explore specific details, request an analogy, or test your knowledge in 'Quiz Mode'?")
+
 
 
 
