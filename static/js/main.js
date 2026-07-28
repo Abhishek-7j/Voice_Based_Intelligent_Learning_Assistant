@@ -786,38 +786,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanedText = cleanTextForSpeech(text);
         if (!cleanedText) return;
 
-        // Ensure ONLY ONE voice engine executes at a time
-        if (fallbackAudioUrl && ttsPlayer) {
+        // Primary: WebSpeech API (instant, keyless, and native)
+        if ('speechSynthesis' in window) {
+            speakWithWebSpeech(cleanedText, fallbackAudioUrl);
+        } else if (fallbackAudioUrl && ttsPlayer) {
             ttsPlayer.src = fallbackAudioUrl;
             ttsPlayer.playbackRate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
-            ttsPlayer.play().then(() => {
-                if (audioControlBar) audioControlBar.style.display = 'flex';
-                if (audioStatusText) audioStatusText.textContent = "Speaking...";
-                if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
-            }).catch(e => {
-                console.warn('gTTS Audio play error, falling back to WebSpeech:', e);
-                speakWithWebSpeech(cleanedText);
-            });
-        } else {
-            speakWithWebSpeech(cleanedText);
+            ttsPlayer.play().catch(e => console.warn('Audio element play error:', e));
         }
     }
 
-    function speakWithWebSpeech(cleanedText) {
+    function speakWithWebSpeech(cleanedText, fallbackAudioUrl) {
         if (!('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel();
 
-        const utterance = new SpeechSynthesisUtterance(cleanedText.substring(0, 1000));
+        window.speechSynthesis.cancel();
+        try { window.speechSynthesis.resume(); } catch(e) {}
+
+        const utterance = new SpeechSynthesisUtterance(cleanedText.substring(0, 1200));
         utterance.rate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
 
-        const activeLang = (languageSelect && languageSelect.value !== 'auto') ? languageSelect.value : (topLanguageSelect ? topLanguageSelect.value : 'en-US');
-        utterance.lang = (activeLang === 'auto' || !activeLang) ? 'en-US' : activeLang;
+        // Auto-detect language script directly from cleanedText characters
+        const isTelugu = /[\u0C00-\u0C7F]/.test(cleanedText);
+        const isHindi = /[\u0900-\u097F]/.test(cleanedText);
+        const isTamil = /[\u0B80-\u0BFF]/.test(cleanedText);
+        const isKannada = /[\u0C80-\u0CFF]/.test(cleanedText);
+
+        if (isTelugu) utterance.lang = 'te-IN';
+        else if (isHindi) utterance.lang = 'hi-IN';
+        else if (isTamil) utterance.lang = 'ta-IN';
+        else if (isKannada) utterance.lang = 'kn-IN';
+        else {
+            const activeLang = (languageSelect && languageSelect.value !== 'auto') ? languageSelect.value : (topLanguageSelect ? topLanguageSelect.value : 'en-US');
+            utterance.lang = (activeLang === 'auto' || !activeLang) ? 'en-US' : activeLang;
+        }
 
         const voices = window.speechSynthesis.getVoices();
         if (voices.length > 0) {
-            let preferredVoice = voices.find(v => v.lang.startsWith(utterance.lang.substring(0, 2)) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
+            let targetPrefix = utterance.lang.substring(0, 2);
+            let preferredVoice = voices.find(v => v.lang.startsWith(targetPrefix) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
             if (!preferredVoice) {
-                preferredVoice = voices.find(v => v.lang.startsWith(utterance.lang.substring(0, 2)));
+                preferredVoice = voices.find(v => v.lang.startsWith(targetPrefix));
             }
             if (preferredVoice) utterance.voice = preferredVoice;
         }
@@ -832,8 +840,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (audioControlBar) audioControlBar.style.display = 'none';
         };
 
+        utterance.onerror = (err) => {
+            console.warn('WebSpeech notice, attempting audio fallback:', err);
+            if (fallbackAudioUrl && ttsPlayer) {
+                ttsPlayer.src = fallbackAudioUrl;
+                ttsPlayer.playbackRate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
+                ttsPlayer.play().catch(e => console.warn('Audio fallback error:', e));
+            }
+        };
+
         window.speechSynthesis.speak(utterance);
     }
+
 
 
 

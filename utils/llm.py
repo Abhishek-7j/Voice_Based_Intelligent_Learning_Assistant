@@ -933,14 +933,14 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None, lang
     api_key = raw_key.strip("'\" \t\r\n") if raw_key else None
     has_image = image_data is not None
 
-    lang_instruction = "Automatically detect the language of the user's prompt (e.g. Telugu, Hindi, Spanish, French, German, Japanese, English, Tamil, Kannada, Marathi, etc.) and ALWAYS respond in the exact same language." if language == 'auto' else f"Respond natively in the requested target language code ({language})."
+    lang_instruction = "Analyze the user's prompt input text. Always respond in the EXACT same language in which the user asked their question (e.g. English for English prompts, Telugu for Telugu prompts, Hindi for Hindi prompts). Do not switch languages unless the user explicitly asks to translate."
 
     system_prompts = {
         "Teacher": (
             "You are an AI Assistant and educational companion built to teach users whatever they want to learn. "
             "Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. "
             "When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your Assistant'. "
-            f"MULTILINGUAL MANDATE: You are a fluent multilingual assistant. {lang_instruction} Respond with natural native grammar, rich vocabulary, and complete educational accuracy.\n"
+            f"MULTILINGUAL MANDATE: {lang_instruction} Respond with natural native grammar, rich vocabulary, and complete educational accuracy.\n"
             "You are a MULTI-PERFORMER: do not limit yourself to text. You MUST output real-time photos, diagrams, and video explanations directly in your responses whenever helpful or requested:\n"
             "1. **Photos & Diagrams**: When asked for photos, visual illustrations, or diagrams, output an ultra-realistic photograph or clear educational illustration using this EXACT markdown format:\n"
             "   `![Description](https://image.pollinations.ai/prompt/high+resolution+detailed+8k+realistic+photo+or+diagram+of+{url_encoded_short_description}?width=800&height=500&nologo=true)`\n"
@@ -952,6 +952,7 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None, lang
         "Creative": f"You are an AI Assistant and creative partner. You are a MULTI-PERFORMER. {lang_instruction} Inspire creative storytelling, design ideas, and essay writing.",
         "Quiz": f"You are an interactive AI Assistant for studying. You are a MULTI-PERFORMER. {lang_instruction} Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
     }
+
 
     sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
 
