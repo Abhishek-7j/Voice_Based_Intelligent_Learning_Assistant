@@ -206,21 +206,7 @@ def get_base_fallback_response(user_text, mode):
                 "4. **Adaptive Voice Controls**: Click **'Simplify That'** or **'Explain Differently'** to change explanation speed.\n"
                 "5. **Screen Reader Shortcuts**: Press `Alt+M` for Mic, `Alt+S` for Silence, `Alt+R` for Repeat.")
     
-    # 1. AI Image Generation Request Detection (ChatGPT / Gemini style)
-    img_triggers = ["generate image", "draw", "create image", "create a picture", "make a picture", "show a picture", "picture of", "image of"]
-    if any(trigger in text for trigger in img_triggers):
-        # Clean prompt
-        prompt = re.sub(r'^(generate|draw|create|make|show)\s+(an?\s+)?(image|picture|photo)\s+(of\s+)?', '', text, flags=re.IGNORECASE).strip()
-        if not prompt:
-            prompt = "a vibrant futuristic AI learning companion in space"
-            
-        encoded = urllib.parse.quote(prompt)
-        img_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
-        
-        return (f"## 🎨 AI Image Generator\n\n"
-                f"Here is your AI generated image for **\"{prompt.capitalize()}\"**:\n\n"
-                f"![{prompt}]({img_url})\n\n"
-                f"*Tip: You can ask me to generate images for any topic in science, space, history, or fantasy!*")
+
 
     # 2. Greetings (Check with whole-word boundary matches)
     greetings = ["hello", "hi", "hey", "sup", "greetings"]

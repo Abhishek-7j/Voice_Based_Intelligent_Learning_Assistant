@@ -786,48 +786,55 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanedText = cleanTextForSpeech(text);
         if (!cleanedText) return;
 
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-
-            const utterance = new SpeechSynthesisUtterance(cleanedText.substring(0, 1000));
-            utterance.rate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
-
-            // Select best available voice matching selected mode/gender
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length > 0) {
-                let preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Siri')));
-                if (!preferredVoice) {
-                    preferredVoice = voices.find(v => v.lang.startsWith('en'));
-                }
-                if (preferredVoice) utterance.voice = preferredVoice;
-            }
-
-            utterance.onstart = () => {
-                if (audioControlBar) audioControlBar.style.display = 'flex';
-                if (audioStatusText) audioStatusText.textContent = "Speaking (Neural Voice)...";
-                if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i>';
-            };
-
-            utterance.onend = () => {
-                if (audioControlBar) audioControlBar.style.display = 'none';
-            };
-
-            utterance.onerror = (e) => {
-                console.warn('Web Speech Synthesis notice, using audio fallback:', e);
-                if (fallbackAudioUrl && ttsPlayer) {
-                    ttsPlayer.src = fallbackAudioUrl;
-                    ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
-                    ttsPlayer.play();
-                }
-            };
-
-            window.speechSynthesis.speak(utterance);
-        } else if (fallbackAudioUrl && ttsPlayer) {
+        // Ensure ONLY ONE voice engine executes at a time
+        if (fallbackAudioUrl && ttsPlayer) {
             ttsPlayer.src = fallbackAudioUrl;
-            ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
-            ttsPlayer.play();
+            ttsPlayer.playbackRate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
+            ttsPlayer.play().then(() => {
+                if (audioControlBar) audioControlBar.style.display = 'flex';
+                if (audioStatusText) audioStatusText.textContent = "Speaking...";
+                if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+            }).catch(e => {
+                console.warn('gTTS Audio play error, falling back to WebSpeech:', e);
+                speakWithWebSpeech(cleanedText);
+            });
+        } else {
+            speakWithWebSpeech(cleanedText);
         }
     }
+
+    function speakWithWebSpeech(cleanedText) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(cleanedText.substring(0, 1000));
+        utterance.rate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
+
+        const activeLang = (languageSelect && languageSelect.value !== 'auto') ? languageSelect.value : (topLanguageSelect ? topLanguageSelect.value : 'en-US');
+        utterance.lang = (activeLang === 'auto' || !activeLang) ? 'en-US' : activeLang;
+
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            let preferredVoice = voices.find(v => v.lang.startsWith(utterance.lang.substring(0, 2)) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
+            if (!preferredVoice) {
+                preferredVoice = voices.find(v => v.lang.startsWith(utterance.lang.substring(0, 2)));
+            }
+            if (preferredVoice) utterance.voice = preferredVoice;
+        }
+
+        utterance.onstart = () => {
+            if (audioControlBar) audioControlBar.style.display = 'flex';
+            if (audioStatusText) audioStatusText.textContent = "Speaking...";
+            if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+        };
+
+        utterance.onend = () => {
+            if (audioControlBar) audioControlBar.style.display = 'none';
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
 
 
     // --- Persistent Client-Server Sync Engine ---
