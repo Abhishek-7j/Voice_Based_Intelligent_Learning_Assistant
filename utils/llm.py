@@ -464,31 +464,38 @@ def refine_and_classify_human_prompt(user_text):
 
     return cleaned
 
-def extract_topic_from_history(history=[]):
+def extract_topic_from_history(current_query="", history=[]):
     """
     Extracts the core subject topic from conversation history for follow-up prompts.
+    Ignores the current user query and inspects preceding messages for substantial subjects.
     """
     if not history:
         return ""
-    
-    # Search backwards for the last subject in previous turns
+
+    clean_current = current_query.strip().lower() if current_query else ""
+    stop_words = {"tell", "me", "about", "what", "is", "a", "an", "the", "can", "you", "explain", "how", "does", "work", "differently", "analogy", "using", "real-world", "concept", "of", "give", "picture", "photo", "image", "that", "this", "it", "more", "details", "simplify", "repeat", "quiz"}
+
     for msg in reversed(history):
-        content = msg.get('content', '')
-        # Check headings in AI response (e.g., "## Quantum Computing")
-        headings = re.findall(r'#+\s*([^\n]+)', content)
+        content = msg.get('content', '').strip()
+        if not content or content.lower() == clean_current:
+            continue
+
+        # 1. Check headings or "About" phrases in previous AI messages (e.g. "## Mountain", "About Mountain:")
+        headings = re.findall(r'(?:#+|\bAbout|\bPhotos of|\bAnalogy of|\bGuide to)\s*([A-Za-z0-9\s]{3,30})', content, re.IGNORECASE)
         if headings:
-            clean_head = headings[0].replace('⚛️', '').replace('🧬', '').replace('💡', '').replace('📚', '').replace('⚙️', '').strip()
-            if clean_head and len(clean_head) > 3:
+            clean_head = headings[0].strip()
+            # Verify clean_head is not a generic stop word
+            if clean_head.lower() not in stop_words and len(clean_head) >= 3:
                 return clean_head
 
-        # Check user prompt subject
+        # 2. Check previous User messages for real subject words
         if msg.get('role') == 'user':
-            stop_words = {"tell", "me", "about", "what", "is", "a", "an", "the", "can", "you", "explain", "how", "does", "work", "differently", "analogy", "that", "this", "concept", "of"}
             words = [w for w in re.findall(r'\b[A-Za-z]{3,}\b', content) if w.lower() not in stop_words]
             if words:
-                return " ".join(words[:3])
+                return " ".join(words[:3]).capitalize()
 
     return ""
+
 
 def search_web_resources(query, history=[]):
     """
@@ -514,7 +521,8 @@ def search_web_resources(query, history=[]):
     
     extracted_context_topic = ""
     if is_follow_up and history:
-        extracted_context_topic = extract_topic_from_history(history)
+        extracted_context_topic = extract_topic_from_history(clean_query, history)
+
 
     target_subject = extracted_context_topic if extracted_context_topic else clean_query
 

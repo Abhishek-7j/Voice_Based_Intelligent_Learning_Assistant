@@ -96,20 +96,25 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 window.speechSynthesis.pause();
                 window.speechSynthesis.cancel();
-                window.speechSynthesis.resume();
-                window.speechSynthesis.cancel();
+                setTimeout(() => {
+                    try {
+                        window.speechSynthesis.cancel();
+                    } catch(e) {}
+                }, 10);
             } catch(e) {}
         }
         if (ttsPlayer) {
             try {
                 ttsPlayer.pause();
                 ttsPlayer.currentTime = 0;
+                ttsPlayer.removeAttribute('src');
             } catch(e) {}
         }
         if (audioControlBar) {
             audioControlBar.style.display = 'none';
         }
     }
+
 
 
     if (SpeechRecognition) {
