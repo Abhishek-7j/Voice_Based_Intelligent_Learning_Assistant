@@ -192,10 +192,14 @@
                         <option value="fr-FR">🇫🇷 French (Français)</option>
                         <option value="de-DE">🇩🇪 German (Deutsch)</option>
                         <option value="ja-JP">🇯🇵 Japanese (日本語)</option>
-                    </select>
-                    <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                    <div class="user-account-badge" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                        <i class="fas fa-user-circle" style="color: var(--accent); font-size: 1.1rem;"></i>
+                        <span style="font-size: 0.85rem; font-weight: 500;">{{ user_name }}</span>
+                        <a href="/logout" title="Sign Out / Logout" style="color: #f87171; margin-left: 6px; font-size: 0.9rem; text-decoration: none; transition: 0.2s;"><i class="fas fa-sign-out-alt"></i></a>
+                    </div>
                 </div>
             </header>
+
 
 
             <div id="chat-history" class="chat-container">
