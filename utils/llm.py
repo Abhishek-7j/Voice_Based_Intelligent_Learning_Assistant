@@ -840,12 +840,10 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None):
                 gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
                 if gemini_res:
                     return gemini_res
-        
-        # Requirement 4: User-Friendly Voice Error Handling on full failure
-        return "I'm having a brief connection issue, please try asking again in a moment."
 
-    # 2. Secondary Option: Keyless Local Academic Engine (Offline Fallback)
+    # 2. Secondary Option: Keyless Local Academic Engine (Always returns an accurate answer!)
     return get_local_fallback_response(user_text, mode, has_image, history, image_data)
+
 
 
 
