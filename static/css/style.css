@@ -824,29 +824,45 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .audio-control-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255, 255, 255, 0.05);
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--text-primary);
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
-    transition: 0.2s;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .audio-control-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--accent);
     color: var(--accent);
-    transform: scale(1.05);
+    transform: translateY(-1px);
+}
+
+.audio-control-btn.btn-audio-stop {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+
+.audio-control-btn.btn-audio-stop:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+    color: #ffffff;
 }
 
 .audio-control-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
 }
+
 
 /* Stats Panel */
 .stats-panel {

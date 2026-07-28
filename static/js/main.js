@@ -879,16 +879,17 @@ document.addEventListener('DOMContentLoaded', () => {
     ttsPlayer.addEventListener('play', () => {
         audioControlBar.style.display = 'flex';
         audioStatusText.textContent = "Speaking...";
-        audioBtnPause.innerHTML = '<i class="fas fa-pause"></i>';
+        audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
     });
 
     ttsPlayer.addEventListener('pause', () => {
         audioStatusText.textContent = "Paused";
-        audioBtnPause.innerHTML = '<i class="fas fa-play"></i>';
+        audioBtnPause.innerHTML = '<i class="fas fa-play"></i> <span>Continue</span>';
     });
 
     ttsPlayer.addEventListener('ended', () => {
         audioControlBar.style.display = 'none';
+        audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
     });
 
     // --- Audio Control Widget Actions ---
@@ -897,16 +898,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.speechSynthesis.paused) {
                 window.speechSynthesis.resume();
                 audioStatusText.textContent = "Speaking (Neural Voice)...";
-                audioBtnPause.innerHTML = '<i class="fas fa-pause"></i>';
+                audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
             } else {
                 window.speechSynthesis.pause();
                 audioStatusText.textContent = "Paused";
-                audioBtnPause.innerHTML = '<i class="fas fa-play"></i>';
+                audioBtnPause.innerHTML = '<i class="fas fa-play"></i> <span>Continue</span>';
             }
         } else if (ttsPlayer && !ttsPlayer.paused) {
             ttsPlayer.pause();
+            audioStatusText.textContent = "Paused";
+            audioBtnPause.innerHTML = '<i class="fas fa-play"></i> <span>Continue</span>';
         } else if (ttsPlayer && ttsPlayer.src) {
             ttsPlayer.play();
+            audioStatusText.textContent = "Speaking...";
+            audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
         }
     });
 
@@ -923,6 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ttsPlayer.play();
         }
     });
+
 
 
     // --- Event Listeners ---

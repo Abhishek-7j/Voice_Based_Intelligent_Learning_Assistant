@@ -275,11 +275,12 @@
             <span id="audio-status-text">Speaking...</span>
         </div>
         <div class="audio-btn-group">
-            <button id="audio-btn-retell" class="audio-control-btn" title="Retell / Replay"><i class="fas fa-redo"></i></button>
-            <button id="audio-btn-pause" class="audio-control-btn" title="Pause / Play"><i class="fas fa-pause"></i></button>
-            <button id="audio-btn-stop" class="audio-control-btn" title="Stop"><i class="fas fa-stop"></i></button>
+            <button id="audio-btn-retell" class="audio-control-btn" title="Start Replay"><i class="fas fa-play"></i> <span>Start</span></button>
+            <button id="audio-btn-pause" class="audio-control-btn" title="Pause / Continue"><i class="fas fa-pause"></i> <span>Pause</span></button>
+            <button id="audio-btn-stop" class="audio-control-btn btn-audio-stop" title="Stop Audio"><i class="fas fa-square"></i> <span>Stop</span></button>
         </div>
     </div>
+
 
     <audio id="tts-player" hidden></audio>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
