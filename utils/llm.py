@@ -322,7 +322,7 @@ def get_base_fallback_response(user_text, mode):
                 "- **1944**: D-Day Allied landings liberate Western Europe.\n"
                 "- **1945**: End of WWII and founding of the United Nations.")
 
-    # 11. Clean Universal Dynamic Response Engine with Verified Resource Knowledge
+    # 11. Clean Universal Dynamic Response Engine
     stop_words = {"the", "a", "an", "is", "of", "and", "or", "in", "out", "for", "with", "to", "on", "at", "by", "from", "up", "about", "into", "over", "after", "that", "this", "these", "those", "tell", "me", "can", "you", "what", "how", "why", "image", "photo", "picture", "show", "give", "help"}
     raw_words = [re.sub(r'[^\w\s]', '', w) for w in user_text.split()]
     meaningful = [w for w in raw_words if w.lower() not in stop_words and len(w) > 2]
@@ -340,17 +340,10 @@ def get_base_fallback_response(user_text, mode):
                 f"Exploring **{topic_display}** offers fascinating real-world perspectives and natural beauty. "
                 f"Would you like to learn more details about this topic?")
 
-    # Check for live web resources
-    resource = search_web_resources(user_text)
-    if resource:
-        return (f"## 📚 {resource['title']}\n\n"
-                f"{resource['snippet']}\n\n"
-                f"🔗 **Reference Source**: [{resource['title']}]({resource['url']}) *({resource['source']})*")
+    return (f"## 💡 {topic_display}\n\n"
+            f"**{topic_display}** is an essential concept with wide-ranging real-world applications. "
+            f"Would you like to explore specific details, key examples, or take a quiz on this topic?")
 
-    return (f"## 💡 Understanding {topic_display}\n\n"
-            f"**{topic_display}** is a key subject in modern learning and real-world applications. "
-            f"To get live dynamic responses, please ensure a valid Gemini API Key is configured in settings or `.env`.\n\n"
-            f"Would you like to explore another topic or quiz yourself on this subject?")
 
 
 def get_local_fallback_response(user_text, mode, has_image=False, history=[], image_data=None):
