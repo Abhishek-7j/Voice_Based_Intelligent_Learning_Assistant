@@ -398,6 +398,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let activeSessionImageBase64 = null;
 
+    function getUserId() {
+        return window.CURRENT_USER_ID || '1';
+    }
+
+    function getCachedConvsKey() {
+        return `cached_conversations_user_${getUserId()}`;
+    }
+
+    function getCachedHistoryKey(convId) {
+        return `cached_history_user_${getUserId()}_${convId}`;
+    }
+
     async function handleSendMessage() {
         const text = userInput.value.trim();
         
@@ -463,7 +475,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
-
             if (!response.ok) {
                 if (response.status === 502 || response.status === 503 || response.status === 504) {
                     appendMessage('ai', "⏳ <strong>Server Initializing / Building Update:</strong> Render container is compiling code or starting up. Please wait 10-15 seconds and try sending your question again!", true);
@@ -488,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Cache conversation history locally
                 if (currentConversationId) {
-                    const cachedKey = `cached_history_${currentConversationId}`;
+                    const cachedKey = getCachedHistoryKey(currentConversationId);
                     let localHistory = [];
                     const existing = localStorage.getItem(cachedKey);
                     if (existing) {
@@ -512,8 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
-
     // --- Sidebar Session Loading ---
     async function loadConversations() {
         let conversations = [];
@@ -521,10 +530,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/history');
             conversations = await response.json();
             // Cache conversations list
-            localStorage.setItem('cached_conversations', JSON.stringify(conversations));
+            localStorage.setItem(getCachedConvsKey(), JSON.stringify(conversations));
         } catch (err) {
             console.warn("Failed to load conversations from server, attempting local storage fallback:", err);
-            const cached = localStorage.getItem('cached_conversations');
+            const cached = localStorage.getItem(getCachedConvsKey());
             if (cached) {
                 try { conversations = JSON.parse(cached); } catch(e) {}
             }
@@ -564,7 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     async function selectConversation(convId, mode) {
         currentConversationId = convId;
         
@@ -597,10 +605,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/history/${convId}`);
             messages = await response.json();
             // Cache individual chat history
-            localStorage.setItem(`cached_history_${convId}`, JSON.stringify(messages));
+            localStorage.setItem(getCachedHistoryKey(convId), JSON.stringify(messages));
         } catch (err) {
             console.warn("Failed to fetch messages for session from server, attempting local storage fallback:", err);
-            const cached = localStorage.getItem(`cached_history_${convId}`);
+            const cached = localStorage.getItem(getCachedHistoryKey(convId));
             if (cached) {
                 try { messages = JSON.parse(cached); } catch(e) {}
             }
@@ -624,13 +632,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Remove from local cache
-        localStorage.removeItem(`cached_history_${convId}`);
-        const cached = localStorage.getItem('cached_conversations');
+        localStorage.removeItem(getCachedHistoryKey(convId));
+        const cached = localStorage.getItem(getCachedConvsKey());
         if (cached) {
             try {
                 let conversations = JSON.parse(cached);
                 conversations = conversations.filter(c => c.id !== convId);
-                localStorage.setItem('cached_conversations', JSON.stringify(conversations));
+                localStorage.setItem(getCachedConvsKey(), JSON.stringify(conversations));
             } catch(e) {}
         }
 
@@ -641,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startNewChat() {
+
         currentConversationId = null;
         activeSessionImageBase64 = null;
         chatHistory.innerHTML = `
@@ -859,13 +868,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function syncClientWithServer() {
         try {
             let conversationsToSync = [];
-            let cachedConvs = localStorage.getItem('cached_conversations');
+            let cachedConvs = localStorage.getItem(getCachedConvsKey());
             if (cachedConvs) {
                 try {
                     let convsList = JSON.parse(cachedConvs);
                     for (let c of convsList) {
-                        let historyKey = `cached_history_${c.id}`;
+                        let historyKey = getCachedHistoryKey(c.id);
                         let historyData = localStorage.getItem(historyKey);
+
                         let msgs = historyData ? JSON.parse(historyData) : [];
                         conversationsToSync.push({
                             id: c.id,

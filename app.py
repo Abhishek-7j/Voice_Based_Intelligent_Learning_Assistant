@@ -158,7 +158,7 @@ def manifest():
 def index():
     if not session.get('user_id'):
         return redirect(url_for('login'))
-    return render_template('index.html', user_name=session.get('user_name', 'Student'), user_email=session.get('user_email', ''))
+    return render_template('index.html', user_name=session.get('user_name', 'Student'), user_email=session.get('user_email', ''), user_id=session.get('user_id', 1))
 
 @app.route('/ask', methods=['POST'])
 def ask():
@@ -179,7 +179,7 @@ def ask():
             return jsonify({'error': 'Empty message'}), 400
 
         # Get history from DB
-        history = get_history(conv_id)
+        history = get_history(conv_id, user_id=user_id)
         
         # Get AI response
         ai_response_text = get_ai_response(user_text, history, mode, image_data, language)
@@ -218,13 +218,16 @@ def history():
 
 @app.route('/history/<conv_id>', methods=['GET'])
 def get_conv_history(conv_id):
-    messages = get_history(conv_id)
+    user_id = session.get('user_id', 1)
+    messages = get_history(conv_id, user_id=user_id)
     return jsonify(messages)
 
 @app.route('/clear/<conv_id>', methods=['POST'])
 def clear_one(conv_id):
-    delete_conversation(conv_id)
+    user_id = session.get('user_id', 1)
+    delete_conversation(conv_id, user_id=user_id)
     return jsonify({'status': 'deleted'})
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

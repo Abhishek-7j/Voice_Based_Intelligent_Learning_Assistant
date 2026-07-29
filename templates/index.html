@@ -318,6 +318,10 @@
 
 
     <audio id="tts-player" hidden></audio>
+    <script>
+        window.CURRENT_USER_ID = {{ user_id }};
+    </script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
+
