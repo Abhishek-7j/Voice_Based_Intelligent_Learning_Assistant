@@ -91,7 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
 
+    let isSpeechCanceled = false;
+
     function stopSpeechPlayback() {
+        isSpeechCanceled = true;
         if ('speechSynthesis' in window) {
             try {
                 window.speechSynthesis.pause();
@@ -108,12 +111,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 ttsPlayer.pause();
                 ttsPlayer.currentTime = 0;
                 ttsPlayer.removeAttribute('src');
+                ttsPlayer.load();
             } catch(e) {}
         }
         if (audioControlBar) {
             audioControlBar.style.display = 'none';
         }
     }
+
 
 
 
@@ -790,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function playSpeech(text, fallbackAudioUrl) {
         stopSpeechPlayback();
+        isSpeechCanceled = false;
         currentSpeechText = text;
 
         const cleanedText = cleanTextForSpeech(text);
@@ -850,8 +856,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         utterance.onerror = (err) => {
+            // Ignore error events on canceled or interrupted utterances
+            if (isSpeechCanceled || (err && (err.error === 'interrupted' || err.error === 'canceled'))) {
+                return;
+            }
             console.warn('WebSpeech notice, attempting audio fallback:', err);
-            if (fallbackAudioUrl && ttsPlayer) {
+            if (fallbackAudioUrl && ttsPlayer && !isSpeechCanceled) {
                 ttsPlayer.src = fallbackAudioUrl;
                 ttsPlayer.playbackRate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
                 ttsPlayer.play().catch(e => console.warn('Audio fallback error:', e));
@@ -860,6 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.speechSynthesis.speak(utterance);
     }
+
 
 
 
@@ -960,14 +971,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     audioBtnRetell.addEventListener('click', () => {
+        stopSpeechPlayback();
         if (currentSpeechText) {
-            playSpeech(currentSpeechText, ttsPlayer.src);
-        } else if (ttsPlayer && ttsPlayer.src) {
-            ttsPlayer.currentTime = 0;
-            ttsPlayer.playbackRate = parseFloat(speechSpeedInput.value);
-            ttsPlayer.play();
+            playSpeech(currentSpeechText);
         }
     });
+
 
 
 
