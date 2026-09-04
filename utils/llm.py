@@ -916,27 +916,28 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
             except Exception as e:
                 print(f"Groq API notice for {model_id}: {e}")
 
-    # 2. OpenRouter Free Tier API
+    # 2. OpenRouter API (Active production models)
     if openrouter_key:
-        try:
-            url = "https://openrouter.ai/api/v1/chat/completions"
-            payload = json.dumps({
-                "model": "meta-llama/llama-3.3-70b-instruct:free",
-                "messages": messages,
-                "temperature": 0.7
-            }).encode('utf-8')
-            req = urllib.request.Request(url, data=payload, headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openrouter_key.strip()}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-            }, method='POST')
-            with urllib.request.urlopen(req, timeout=3.5) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                choices = data.get('choices', [])
-                if choices and 'message' in choices[0]:
-                    return choices[0]['message'].get('content')
-        except Exception as e:
-            print(f"OpenRouter API notice: {e}")
+        for model_id in ["meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct"]:
+            try:
+                url = "https://openrouter.ai/api/v1/chat/completions"
+                payload = json.dumps({
+                    "model": model_id,
+                    "messages": messages,
+                    "temperature": 0.7
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openrouter_key.strip()}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                }, method='POST')
+                with urllib.request.urlopen(req, timeout=3.5) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    choices = data.get('choices', [])
+                    if choices and 'message' in choices[0]:
+                        return choices[0]['message'].get('content')
+            except Exception as e:
+                print(f"OpenRouter API notice for {model_id}: {e}")
 
     return None
 
