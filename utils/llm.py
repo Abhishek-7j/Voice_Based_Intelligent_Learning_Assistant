@@ -925,55 +925,70 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None, lang
     Generates a response using Google Gemini API key pool, falling back to local academic engines if offline.
     Supports auto-detecting and responding in any target language (Telugu, Hindi, Spanish, French, German, Japanese, English, etc.).
     """
-    # Refine prompt using AI Bot Intent Engine
-    user_text = refine_and_classify_human_prompt(user_text)
+    try:
+        # Refine prompt using AI Bot Intent Engine
+        user_text = refine_and_classify_human_prompt(user_text)
+        if not user_text:
+            return "How can I help you learn today? Ask any study question or upload study photos!"
 
-    from utils.db import get_setting
-    raw_key = get_setting("gemini_api_key") or os.getenv("GEMINI_API_KEY") or get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
-    api_key = raw_key.strip("'\" \t\r\n") if raw_key else None
-    has_image = image_data is not None
+        from utils.db import get_setting
+        raw_key = get_setting("gemini_api_key") or os.getenv("GEMINI_API_KEY") or get_setting("openai_api_key") or os.getenv("OPENAI_API_KEY")
+        api_key = raw_key.strip("'\" \t\r\n") if raw_key else None
+        has_image = image_data is not None
 
-    lang_instruction = "Analyze the user's prompt input text. Always respond in the EXACT same language in which the user asked their question (e.g. English for English prompts, Telugu for Telugu prompts, Hindi for Hindi prompts). Do not switch languages unless the user explicitly asks to translate."
+        lang_instruction = "Analyze the user's prompt input text. Always respond in the EXACT same language in which the user asked their question (e.g. English for English prompts, Telugu for Telugu prompts, Hindi for Hindi prompts). Do not switch languages unless the user explicitly asks to translate."
 
-    system_prompts = {
-        "Teacher": (
-            "You are an AI Assistant and educational companion built to teach users whatever they want to learn. "
-            "Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. "
-            "When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your Assistant'. "
-            f"MULTILINGUAL MANDATE: {lang_instruction} Respond with natural native grammar, rich vocabulary, and complete educational accuracy.\n"
-            "You are a MULTI-PERFORMER: do not limit yourself to text. You MUST output real-time photos, diagrams, and video explanations directly in your responses whenever helpful or requested:\n"
-            "1. **Photos & Diagrams**: When asked for photos, visual illustrations, or diagrams, output an ultra-realistic photograph or clear educational illustration using this EXACT markdown format:\n"
-            "   `![Description](https://image.pollinations.ai/prompt/high+resolution+detailed+8k+realistic+photo+or+diagram+of+{url_encoded_short_description}?width=800&height=500&nologo=true)`\n"
-            "2. **Videos & Animations**: When asked for videos, animations, clips, or motion demonstrations, output a beautiful, clickable YouTube search button card using this EXACT HTML format:\n"
-            "   `<a href=\"https://www.youtube.com/results?search_query={url_encoded_search_query}+educational+explanation\" target=\"_blank\" style=\"text-decoration:none;\"><div class=\"youtube-card\" style=\"display:flex; align-items:center; gap:12px; background:rgba(255,0,0,0.1); border:1px solid rgba(255,0,0,0.3); padding:15px; border-radius:12px; margin:15px 0; color:#ff8b8b; transition:all 0.3s ease;\"><i class=\"fab fa-youtube\" style=\"font-size:2.5rem; color:#ff0000;\"></i><div><strong style=\"display:block; font-size:1rem; color:#ffffff;\">Watch Video Lessons on YouTube</strong><span style=\"font-size:0.8rem; opacity:0.85;\">Search: \"{search_query_here}\"</span></div></div></a>`\n"
-            "Provide direct, highly accurate, structured explanations with real-world examples."
-        ),
-        "Coach": f"You are an AI Assistant and project planner. You are a MULTI-PERFORMER. {lang_instruction} Help users structure complex tasks step-by-step.",
-        "Creative": f"You are an AI Assistant and creative partner. You are a MULTI-PERFORMER. {lang_instruction} Inspire creative storytelling, design ideas, and essay writing.",
-        "Quiz": f"You are an interactive AI Assistant for studying. You are a MULTI-PERFORMER. {lang_instruction} Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
-    }
+        system_prompts = {
+            "Teacher": (
+                "You are an AI Assistant and educational companion built to teach users whatever they want to learn. "
+                "Never identify yourself as 'Gemini' or 'OpenAI' or 'a large language model built by Google'. "
+                "When asked about yourself or your identity ('who are you', 'tell me about you', 'explain about you'), introduce yourself as 'your Assistant'. "
+                f"MULTILINGUAL MANDATE: {lang_instruction} Respond with natural native grammar, rich vocabulary, and complete educational accuracy.\n"
+                "You are a MULTI-PERFORMER: do not limit yourself to text. You MUST output real-time photos, diagrams, and video explanations directly in your responses whenever helpful or requested:\n"
+                "1. **Photos & Diagrams**: When asked for photos, visual illustrations, or diagrams, output an ultra-realistic photograph or clear educational illustration using this EXACT markdown format:\n"
+                "   `![Description](https://image.pollinations.ai/prompt/high+resolution+detailed+8k+realistic+photo+or+diagram+of+{url_encoded_short_description}?width=800&height=500&nologo=true)`\n"
+                "2. **Videos & Animations**: When asked for videos, animations, clips, or motion demonstrations, output a beautiful, clickable YouTube search button card using this EXACT HTML format:\n"
+                "   `<a href=\"https://www.youtube.com/results?search_query={url_encoded_search_query}+educational+explanation\" target=\"_blank\" style=\"text-decoration:none;\"><div class=\"youtube-card\" style=\"display:flex; align-items:center; gap:12px; background:rgba(255,0,0,0.1); border:1px solid rgba(255,0,0,0.3); padding:15px; border-radius:12px; margin:15px 0; color:#ff8b8b; transition:all 0.3s ease;\"><i class=\"fab fa-youtube\" style=\"font-size:2.5rem; color:#ff0000;\"></i><div><strong style=\"display:block; font-size:1rem; color:#ffffff;\">Watch Video Lessons on YouTube</strong><span style=\"font-size:0.8rem; opacity:0.85;\">Search: \"{search_query_here}\"</span></div></div></a>`\n"
+                "Provide direct, highly accurate, structured explanations with real-world examples."
+            ),
+            "Coach": f"You are an AI Assistant and project planner. You are a MULTI-PERFORMER. {lang_instruction} Help users structure complex tasks step-by-step.",
+            "Creative": f"You are an AI Assistant and creative partner. You are a MULTI-PERFORMER. {lang_instruction} Inspire creative storytelling, design ideas, and essay writing.",
+            "Quiz": f"You are an interactive AI Assistant for studying. You are a MULTI-PERFORMER. {lang_instruction} Pose one clear conceptual or practical question at a time and grade the user's answer accurately."
+        }
 
+        sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
 
-    sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
+        # 1. Primary Option: Try Google Gemini API key pool
+        all_keys = key_manager.get_all_keys(api_key)
+        if all_keys:
+            for _ in range(len(all_keys)):
+                current_pooled_key = key_manager.get_valid_key(api_key)
+                if current_pooled_key:
+                    try:
+                        gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
+                        if gemini_res:
+                            return gemini_res
+                    except Exception as e:
+                        print(f"Gemini API attempt error: {e}")
 
+        # 2. Solution 3 Hybrid Option: Try Groq / OpenRouter Multi-Provider Online AI
+        try:
+            hybrid_res = call_hybrid_provider_api(user_text, sys_prompt, history)
+            if hybrid_res:
+                return hybrid_res
+        except Exception as e:
+            print(f"Hybrid provider API attempt error: {e}")
 
-    # 1. Primary Option: Try Google Gemini API key pool
-    all_keys = key_manager.get_all_keys(api_key)
-    if all_keys:
-        for _ in range(len(all_keys)):
-            current_pooled_key = key_manager.get_valid_key(api_key)
-            if current_pooled_key:
-                gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
-                if gemini_res:
-                    return gemini_res
+        # 3. Tertiary Option: Rich Knowledge Synthesis Engine
+        local_res = get_local_fallback_response(user_text, mode, has_image, history, image_data)
+        if local_res:
+            return local_res
+        return get_base_fallback_response(user_text, mode)
 
-    # 2. Solution 3 Hybrid Option: Try Groq / OpenRouter Multi-Provider Online AI
-    hybrid_res = call_hybrid_provider_api(user_text, sys_prompt, history)
-    if hybrid_res:
-        return hybrid_res
+    except Exception as e:
+        print(f"Unhandled error in get_ai_response: {e}")
+        return get_base_fallback_response(user_text, mode)
 
-    # 3. Tertiary Option: Rich Knowledge Synthesis Engine
-    return get_local_fallback_response(user_text, mode, has_image, history, image_data)
 
 
 

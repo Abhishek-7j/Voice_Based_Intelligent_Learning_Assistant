@@ -374,9 +374,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     throwOnError: false
                 });
             }
+        } else if (isError) {
+            messageDiv.innerHTML = text;
         } else {
             messageDiv.textContent = text;
         }
+
 
         // Add Timestamp at the end of the prompt or answer
         const now = new Date();

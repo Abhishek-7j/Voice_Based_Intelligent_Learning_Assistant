@@ -183,9 +183,13 @@ def ask():
         
         # Get AI response
         ai_response_text = get_ai_response(user_text, history, mode, image_data, language)
+        if not ai_response_text:
+            from utils.llm import get_base_fallback_response
+            ai_response_text = get_base_fallback_response(user_text, mode)
         
-        if "CONFIG_ERROR:" in ai_response_text:
+        if isinstance(ai_response_text, str) and "CONFIG_ERROR:" in ai_response_text:
             return jsonify({'error': 'configuration_needed', 'message': ai_response_text}), 401
+
         
         # Generate a title if it's new (using first message)
         title = user_text[:30] + '...' if len(user_text) > 30 else user_text
