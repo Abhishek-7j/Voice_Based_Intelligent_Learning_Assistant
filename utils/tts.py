@@ -101,8 +101,9 @@ def text_to_speech(text, folder='static/audio', language='auto'):
     if not cleaned_text:
         cleaned_text = "I have generated a response for you."
     
-    # Use first ~600 chars for rapid speech preview (under 1 second generation)
-    speech_snippet = cleaned_text[:600]
+    # Use first ~250 chars for rapid speech preview (under 0.2 second generation)
+    speech_snippet = cleaned_text[:250]
+
     
     # Determine gTTS language code
     lang_map = {

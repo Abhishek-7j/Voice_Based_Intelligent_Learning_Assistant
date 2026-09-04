@@ -797,8 +797,8 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                 gc.collect()
                 return None  # Return immediately so next pooled key is tried with zero delay
 
-        # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fallback)
-        for model_id in models_to_attempt:
+        # 2. Direct Gemini REST API HTTP POST (Zero Dependency Fast Router)
+        for model_id in ["gemini-2.0-flash", "gemini-1.5-flash"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
                 
@@ -824,10 +824,10 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                 
                 payload = json.dumps({
                     "contents": contents_payload,
-                    "generationConfig": {"maxOutputTokens": 3000}
+                    "generationConfig": {"maxOutputTokens": 2500}
                 }).encode('utf-8')
                 req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
-                with urllib.request.urlopen(req, timeout=5) as response:
+                with urllib.request.urlopen(req, timeout=3) as response:
                     data = json.loads(response.read().decode('utf-8'))
                     candidates = data.get('candidates', [])
                     if candidates:
@@ -836,21 +836,15 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
                             gc.collect()
                             return p_parts[0]['text']
             except urllib.error.HTTPError as http_err:
-                if http_err.code in [429, 500, 503]:
+                if http_err.code in [400, 403, 429, 500, 503]:
                     key_manager.mark_key_exhausted(api_key)
                     gc.collect()
-                    return None  # Return immediately so next pooled key is tried with zero delay
+                    return None
             except Exception:
                 continue
 
-        # Exponential backoff delay only for transient network retry on the same key
-        time.sleep(1)
-
     gc.collect()
     return None
-
-
-
 
 
 def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor.", history=[]):
@@ -886,7 +880,7 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                 "Authorization": f"Bearer {groq_key.strip()}",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
             }, method='POST')
-            with urllib.request.urlopen(req, timeout=8) as response:
+            with urllib.request.urlopen(req, timeout=3.5) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 choices = data.get('choices', [])
                 if choices and 'message' in choices[0]:
@@ -908,7 +902,7 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                 "Authorization": f"Bearer {openrouter_key.strip()}",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
             }, method='POST')
-            with urllib.request.urlopen(req, timeout=8) as response:
+            with urllib.request.urlopen(req, timeout=3.5) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 choices = data.get('choices', [])
                 if choices and 'message' in choices[0]:
@@ -916,8 +910,8 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
         except Exception as e:
             print(f"OpenRouter API notice: {e}")
 
-
     return None
+
 
 
 def get_ai_response(user_text, history=[], mode="Teacher", image_data=None, language="auto"):
