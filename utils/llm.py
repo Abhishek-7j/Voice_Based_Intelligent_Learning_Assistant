@@ -362,11 +362,25 @@ def get_base_fallback_response(user_text, mode):
                 f"Exploring **{topic_display}** offers fascinating real-world perspectives and natural beauty. "
                 f"Would you like to learn more details about this topic?")
 
-    return (f"## 📚 Overview: {topic_display}\n\n"
-            f"Here is a structured overview of **{topic_display}**:\n\n"
-            f"- **Core Subject**: Key principles and practical insights relating to {topic_display}.\n"
-            f"- **Applications**: Widely studied across academic, technical, and real-world domains.\n\n"
-            f"Would you like to explore specific details, request an analogy, or test your knowledge in 'Quiz Mode'?")
+    encoded_topic = urllib.parse.quote(topic_display)
+    return (f"## 📖 Comprehensive Guide: {topic_display}\n\n"
+            f"### 1. Executive Summary\n"
+            f"**{topic_display}** represents a fundamental concept across modern science, technology, and learning domains. "
+            f"Understanding **{topic_display}** equips students and researchers with essential analytical principles and practical knowledge required for academic and real-world success.\n\n"
+            f"### 2. Core Principles & Key Concepts\n"
+            f"- 🧠 **Theoretical Basis**: Relies on systematic methodologies, core structures, and empirical observation.\n"
+            f"- ⚙️ **Functional Dynamics**: Interacts directly with foundational frameworks to analyze, execute, or resolve complex problems.\n"
+            f"- 📊 **Key Metrics & Properties**: Evaluates performance, accuracy, and structural integrity across various operational environments.\n\n"
+            f"### 3. Real-World Applications & Use Cases\n"
+            f"- 🔬 **Academic & Scientific Research**: Used in standard formulations, experiments, and higher-level problem solving.\n"
+            f"- 💻 **Modern Technology & Industry**: Applied in modern digital workflows, automation systems, and algorithmic decision-making.\n"
+            f"- 🌐 **Everyday Practice**: Provides critical context for understanding natural phenomena, engineering tasks, and logical reasoning.\n\n"
+            f"### 4. In-Depth Analysis\n"
+            f"When studying **{topic_display}**, it is crucial to break down complex components into modular units. "
+            f"By mastering the underlying mechanics step-by-step, learners can connect **{topic_display}** to broader domains such as Computer Science, Mathematics, Physics, and Data Analysis.\n\n"
+            f"### 5. Recommended Resources & Video Lessons\n"
+            f'<a href="https://www.youtube.com/results?search_query={encoded_topic}+educational+explanation" target="_blank" style="text-decoration:none;"><div class="youtube-card" style="display:flex; align-items:center; gap:14px; background:rgba(255,0,0,0.12); border:1px solid rgba(255,0,0,0.35); padding:16px; border-radius:12px; margin:15px 0; color:#ff8b8b;"><i class="fab fa-youtube" style="font-size:2.5rem; color:#ff0000;"></i><div><strong style="display:block; font-size:1.05rem; color:#ffffff;">Watch Video Lessons on YouTube</strong><span style="font-size:0.85rem; opacity:0.85;">Topic: "{topic_display}"</span></div></div></a>\n\n'
+            f"💡 *Tip: You can ask follow-up questions or request specific examples on {topic_display} at any time!*")
 
 
 
