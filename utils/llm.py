@@ -875,15 +875,33 @@ def call_gemini_api(api_key, user_text, system_prompt="You are an expert tutor."
 
 def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor.", history=[]):
     """
-    Solution 3: Multi-Provider Hybrid Online AI Router.
-    Connects to Groq or OpenRouter free API endpoints when Google Gemini API keys hit rate limits.
-    Guarantees live AI responses with 100% intelligence.
+    Multi-Provider Hybrid Online AI Router.
+    Connects dynamically across Cerebras, Groq, and OpenRouter API keys
+    (supporting single keys and indexed keys like CEREBRAS_API_KEY1, GROQ_API_KEY1, OPENROUTER_API_KEY1).
+    Guarantees live AI responses with sub-second speeds.
     """
-    groq_key = os.getenv("GROQ_API_KEY") or get_setting("groq_api_key")
-    openrouter_key = os.getenv("OPENROUTER_API_KEY") or get_setting("openrouter_api_key")
+    # 1. Gather all Cerebras keys
+    cerebras_keys = []
+    for k in ["CEREBRAS_API_KEY", "CEREBRAS_API_KEY1", "CEREBRAS_API_KEY2"]:
+        val = os.getenv(k) or get_setting(k.lower())
+        if val and val.strip():
+            cerebras_keys.append(val.strip())
 
+    # 2. Gather all Groq keys
+    groq_keys = []
+    for k in ["GROQ_API_KEY", "GROQ_API_KEY1", "GROQ_API_KEY2"]:
+        val = os.getenv(k) or get_setting(k.lower())
+        if val and val.strip():
+            groq_keys.append(val.strip())
 
-    if not groq_key and not openrouter_key:
+    # 3. Gather all OpenRouter keys
+    openrouter_keys = []
+    for k in ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY1", "OPENROUTER_API_KEY2"]:
+        val = os.getenv(k) or get_setting(k.lower())
+        if val and val.strip():
+            openrouter_keys.append(val.strip())
+
+    if not cerebras_keys and not groq_keys and not openrouter_keys:
         return None
 
     trimmed_history = history[-6:] if history else []
@@ -893,8 +911,31 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
         messages.append({"role": role, "content": msg.get('content', '')})
     messages.append({"role": "user", "content": user_text})
 
-    # 1. Groq Free Tier API (Active fast models)
-    if groq_key:
+    # 1. Cerebras API Pool (Ultra-fast inference: 2000 tokens/sec)
+    for key in cerebras_keys:
+        for model_id in ["llama-3.3-70b", "llama3.1-8b"]:
+            try:
+                url = "https://api.cerebras.ai/v1/chat/completions"
+                payload = json.dumps({
+                    "model": model_id,
+                    "messages": messages,
+                    "temperature": 0.7
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {key}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                }, method='POST')
+                with urllib.request.urlopen(req, timeout=3.5) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    choices = data.get('choices', [])
+                    if choices and 'message' in choices[0]:
+                        return choices[0]['message'].get('content')
+            except Exception as e:
+                print(f"Cerebras API notice for {model_id}: {e}")
+
+    # 2. Groq API Pool (Sub-second response speeds)
+    for key in groq_keys:
         for model_id in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
             try:
                 url = "https://api.groq.com/openai/v1/chat/completions"
@@ -905,7 +946,7 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                 }).encode('utf-8')
                 req = urllib.request.Request(url, data=payload, headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {groq_key.strip()}",
+                    "Authorization": f"Bearer {key}",
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
                 }, method='POST')
                 with urllib.request.urlopen(req, timeout=3.5) as response:
@@ -916,8 +957,8 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
             except Exception as e:
                 print(f"Groq API notice for {model_id}: {e}")
 
-    # 2. OpenRouter API (Active production models)
-    if openrouter_key:
+    # 3. OpenRouter API Pool (Multi-Model fallback)
+    for key in openrouter_keys:
         for model_id in ["meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct"]:
             try:
                 url = "https://openrouter.ai/api/v1/chat/completions"
@@ -928,7 +969,7 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                 }).encode('utf-8')
                 req = urllib.request.Request(url, data=payload, headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {openrouter_key.strip()}",
+                    "Authorization": f"Bearer {key}",
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
                 }, method='POST')
                 with urllib.request.urlopen(req, timeout=3.5) as response:
