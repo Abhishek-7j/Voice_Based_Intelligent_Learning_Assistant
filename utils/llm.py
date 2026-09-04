@@ -208,7 +208,19 @@ def get_base_fallback_response(user_text, mode):
     
 
 
+    # 1. Video Request Intent Detection
+    video_triggers = ["generate a video", "create a video", "make a video", "show a video", "video for me", "generate video", "video lesson"]
+    if any(trigger in text for trigger in video_triggers):
+        topic_match = re.sub(r'^(can\s+you\s+)?(generate|create|make|show|get)\s+(a\s+)?video\s+(for\s+me\s+)?(on|about|of)?\s*', '', text, flags=re.IGNORECASE).strip()
+        search_topic = topic_match if (topic_match and len(topic_match) > 2) else "educational explanation and video lesson"
+        encoded_topic = urllib.parse.quote(search_topic)
+        return (f"## 🎬 Video Lesson Generator\n\n"
+                f"Here are interactive video lessons and motion demonstrations for **\"{search_topic.capitalize()}\"**:\n\n"
+                f'<a href="https://www.youtube.com/results?search_query={encoded_topic}+educational+explanation" target="_blank" style="text-decoration:none;"><div class="youtube-card" style="display:flex; align-items:center; gap:14px; background:rgba(255,0,0,0.12); border:1px solid rgba(255,0,0,0.35); padding:18px; border-radius:14px; margin:15px 0; color:#ff8b8b; transition:all 0.3s ease;"><i class="fab fa-youtube" style="font-size:2.8rem; color:#ff0000;"></i><div><strong style="display:block; font-size:1.05rem; color:#ffffff;">Watch Video Lessons on YouTube</strong><span style="font-size:0.85rem; opacity:0.85;">Topic: "{search_topic.capitalize()}"</span></div></div></a>\n\n'
+                f"*Tip: You can ask me to find videos for any concept in science, engineering, coding, or history!*")
+
     # 2. Greetings (Check with whole-word boundary matches)
+
     greetings = ["hello", "hi", "hey", "sup", "greetings"]
     if any(re.search(r'\b' + re.escape(greet) + r'\b', text) for greet in greetings):
         if mode == "Teacher":
@@ -853,8 +865,9 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
     Connects to Groq or OpenRouter free API endpoints when Google Gemini API keys hit rate limits.
     Guarantees live AI responses with 100% intelligence.
     """
-    groq_key = os.getenv("GROQ_API_KEY")
-    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY") or get_setting("groq_api_key")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY") or get_setting("openrouter_api_key")
+
 
     if not groq_key and not openrouter_key:
         return None
@@ -866,29 +879,30 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
         messages.append({"role": role, "content": msg.get('content', '')})
     messages.append({"role": "user", "content": user_text})
 
-    # 1. Groq Free Tier API (Ultra-fast Llama-3.3 70B)
+    # 1. Groq Free Tier API (Active fast models)
     if groq_key:
-        try:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            payload = json.dumps({
-                "model": "llama-3.3-70b-versatile",
-                "messages": messages,
-                "temperature": 0.7
-            }).encode('utf-8')
-            req = urllib.request.Request(url, data=payload, headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {groq_key.strip()}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-            }, method='POST')
-            with urllib.request.urlopen(req, timeout=3.5) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                choices = data.get('choices', [])
-                if choices and 'message' in choices[0]:
-                    return choices[0]['message'].get('content')
-        except Exception as e:
-            print(f"Groq API notice: {e}")
+        for model_id in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                payload = json.dumps({
+                    "model": model_id,
+                    "messages": messages,
+                    "temperature": 0.7
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {groq_key.strip()}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                }, method='POST')
+                with urllib.request.urlopen(req, timeout=3.5) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    choices = data.get('choices', [])
+                    if choices and 'message' in choices[0]:
+                        return choices[0]['message'].get('content')
+            except Exception as e:
+                print(f"Groq API notice for {model_id}: {e}")
 
-    # 2. OpenRouter Free Tier API (Llama 3.3 70B Free)
+    # 2. OpenRouter Free Tier API
     if openrouter_key:
         try:
             url = "https://openrouter.ai/api/v1/chat/completions"
@@ -911,6 +925,7 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
             print(f"OpenRouter API notice: {e}")
 
     return None
+
 
 
 
