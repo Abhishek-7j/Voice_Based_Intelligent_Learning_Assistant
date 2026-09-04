@@ -132,13 +132,13 @@ def get_history(conv_id, user_id=None):
     return [{"role": r['role'], "content": r['content']} for r in rows]
 
 def get_all_conversations(user_id=None):
+    if not user_id:
+        return []
     conn = get_db_connection()
-    if user_id:
-        rows = conn.execute("SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM conversations ORDER BY created_at DESC").fetchall()
+    rows = conn.execute("SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
 
 def delete_conversation(conv_id, user_id=None):
     conn = get_db_connection()

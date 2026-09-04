@@ -17,6 +17,9 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "learning-assistant-secret-key-2026")
 CORS(app)
 
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 # Ensure DB is initialized
 init_db()
 
@@ -28,6 +31,7 @@ def login():
         password = request.form.get('password', '').strip()
         user = get_user_by_email(email)
         if user and verify_password(password, user['password_hash']):
+            session.clear()
             session['user_id'] = user['id']
             session['user_email'] = user['email']
             session['user_name'] = user['full_name']
@@ -51,6 +55,7 @@ def signup():
         pwd_hash = hash_password(password)
         user_id = create_user(email, pwd_hash, full_name)
         if user_id:
+            session.clear()
             session['user_id'] = user_id
             session['user_email'] = email
             session['user_name'] = full_name
@@ -60,13 +65,13 @@ def signup():
 
 @app.route('/demo_login', methods=['POST'])
 def demo_login():
-    guest_email = "guest@assistant.ai"
-    user = get_user_by_email(guest_email)
-    if not user:
-        pwd_hash = hash_password("demo1234")
-        user_id = create_user(guest_email, pwd_hash, "Guest Evaluator")
-        user = get_user_by_id(user_id)
+    unique_guest_id = uuid.uuid4().hex[:6]
+    guest_email = f"guest_{unique_guest_id}@assistant.ai"
+    pwd_hash = hash_password("demo1234")
+    user_id = create_user(guest_email, pwd_hash, f"Guest Evaluator #{unique_guest_id.upper()}")
+    user = get_user_by_id(user_id)
     
+    session.clear()
     session['user_id'] = user['id']
     session['user_email'] = user['email']
     session['user_name'] = user['full_name']
@@ -103,7 +108,10 @@ def ping():
 @app.route('/sync', methods=['POST'])
 def sync_data():
     try:
-        user_id = session.get('user_id', 1)
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'unauthorized'}), 401
+
         data = request.json or {}
         conversations = data.get('conversations', [])
         settings = data.get('settings', {})
@@ -156,17 +164,18 @@ def manifest():
 
 @app.route('/')
 def index():
-    if not session.get('user_id'):
+    user_id = session.get('user_id')
+    if not user_id:
         return redirect(url_for('login'))
-    return render_template('index.html', user_name=session.get('user_name', 'Student'), user_email=session.get('user_email', ''), user_id=session.get('user_id', 1))
+    return render_template('index.html', user_name=session.get('user_name', 'Student'), user_email=session.get('user_email', ''), user_id=user_id)
 
 @app.route('/ask', methods=['POST'])
 def ask():
     try:
-        if not session.get('user_id'):
-            return jsonify({'error': 'unauthorized', 'message': 'Please login to ask questions'}), 401
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'unauthorized', 'message': 'Please login to your account'}), 401
             
-        user_id = session.get('user_id', 1)
         data = request.json or {}
         user_text = data.get('text', '').strip()
         mode = data.get('mode', 'Teacher')
@@ -190,7 +199,6 @@ def ask():
         if isinstance(ai_response_text, str) and "CONFIG_ERROR:" in ai_response_text:
             return jsonify({'error': 'configuration_needed', 'message': ai_response_text}), 401
 
-        
         # Generate a title if it's new (using first message)
         title = user_text[:30] + '...' if len(user_text) > 30 else user_text
         
@@ -216,21 +224,28 @@ def ask():
 
 @app.route('/history', methods=['GET'])
 def history():
-    user_id = session.get('user_id', 1)
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify([])
     convs = get_all_conversations(user_id=user_id)
     return jsonify(convs)
 
 @app.route('/history/<conv_id>', methods=['GET'])
 def get_conv_history(conv_id):
-    user_id = session.get('user_id', 1)
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify([])
     messages = get_history(conv_id, user_id=user_id)
     return jsonify(messages)
 
 @app.route('/clear/<conv_id>', methods=['POST'])
 def clear_one(conv_id):
-    user_id = session.get('user_id', 1)
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'unauthorized'}), 401
     delete_conversation(conv_id, user_id=user_id)
     return jsonify({'status': 'deleted'})
+
 
 
 if __name__ == '__main__':
