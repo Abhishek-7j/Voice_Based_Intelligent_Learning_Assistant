@@ -10,76 +10,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_base_fallback_response(user_text, mode):
-    text = user_text.lower().strip()
+def safe_get_setting(key, default=None):
+    try:
+        from utils.db import get_setting
+        return get_setting(key, default)
+    except Exception:
+        return default
 
-    if any(k in text for k in ["galaxy", "milky way", "astronomy", "space", "planet", "star", "black hole", "cosmos", "universe"]):
-        return ("## 🌌 Astronomy & The Milky Way Galaxy\n\n"
-                "The **Milky Way** is a barred spiral galaxy containing over 100 to 400 billion stars, including our Solar System.\n\n"
-                "### Key Astronomical Facts:\n"
-                "- **Diameter**: Approximately 100,000 light-years across.\n"
-                "- **Galactic Center**: Houses a supermassive black hole named **Sagittarius A*** (4 million solar masses).\n"
-                "- **Stellar Neighborhood**: Our Sun resides in the Orion Arm, orbiting the galactic core once every 230 million years.\n\n"
-                "🎨 *Want to see a visual representation? Ask me to **'generate an image of Milky Way galaxy'**!*")
-
-    # 5. Quantum Computing & Physics
-    if any(k in text for k in ["quantum", "physics", "atom", "mechanics", "qubit", "superposition"]):
-        return ("## ⚛️ Understanding Quantum Computing\n\n"
-                "Quantum computing leverages principles of quantum mechanics to perform complex calculations exponentially faster than classical supercomputers.\n\n"
-                "### Key Principles:\n"
-                "1. **Superposition**: Qubits can exist as 0, 1, or both states simultaneously.\n"
-                "2. **Quantum Entanglement**: Linked qubits instantly influence each other's state across distance.\n"
-                "3. **Quantum Interference**: Amplifies correct computational paths to find global solutions fast.")
-
-    # 6. Biology & Life Sciences
-    if any(k in text for k in ["biology", "dna", "rna", "cell", "photosynthesis", "genetics", "organism"]):
-        return ("## 🧬 Molecular Biology & Genetics\n\n"
-                "Deoxyribonucleic Acid (**DNA**) is the molecule that carries genetic instructions in living organisms.\n\n"
-                "### Structure & Function:\n"
-                "- **Double Helix**: Formed by two anti-parallel strands of nucleotides.\n"
-                "- **Base Pairing**: Adenine (A) pairs with Thymine (T), and Cytosine (C) pairs with Guanine (G).\n"
-                "- **Replication**: DNA unzips to make exact copies during cell division (Mitosis).")
-
-    # 7. Mathematics & Equations
-    if any(k in text for k in ["math", "calculus", "algebra", "geometry", "equation", "formula", "theorem"]):
-        return ("## 📐 Essential Mathematical Principles\n\n"
-                "Mathematics provides the language for modeling physical reality.\n\n"
-                "### Fundamental Formulas:\n"
-                "- **Pythagorean Theorem**: `a² + b² = c²` (Relates sides of a right triangle)\n"
-                "- **Euler's Identity**: `e^(iπ) + 1 = 0` (Connects 5 fundamental constants)\n"
-                "- **Calculus Derivative**: `f'(x) = lim (h->0) [f(x+h) - f(x)] / h` (Measures rate of change)")
-
-    # 8. Study Tips / Exams
-    if any(k in text for k in ["study", "exam", "learn", "technique", "tips"]):
-        return ("## 📚 Top Scientific Study Techniques\n\n"
-                "- ⏱️ **Pomodoro Method**: 25 mins deep work, 5 mins rest. Prevents burnout.\n"
-                "- 🔄 **Active Recall**: Self-testing locks information into long-term memory faster than passive re-reading.\n"
-                "- 🗓️ **Spaced Repetition**: Reviewing material at expanding intervals (1d, 3d, 1w) maximizes retention.")
-
-    # 9. Code / Python / Programming
-    if any(k in text for k in ["code", "python", "program", "function", "software"]):
-        return ("## 💻 Writing Efficient Python Code\n\n"
-                "Python emphasizes code readability and clean syntax:\n\n"
-                "```python\n"
-                "def solve_fibonacci(n, memo={}):\n"
-                "    if n in memo: return memo[n]\n"
-                "    if n <= 1: return n\n"
-                "    memo[n] = solve_fibonacci(n - 1, memo) + solve_fibonacci(n - 2, memo)\n"
-                "    return memo[n]\n\n"
-                "print(solve_fibonacci(10)) # Output: 55\n"
-                "```\n\n"
-                "### Key Concepts:\n"
-                "- **Memoization**: Cache previous results to optimize runtime complexity from O(2^n) to O(n).")
-
-    # 10. History / WWII
-    if any(k in text for k in ["history", "world war", "wwii", "ww2"]):
-        return ("## 📜 World War II: Historical Overview\n\n"
-                "World War II (1939–1945) reshaped modern geopolitics and international law.\n\n"
-                "### Timeline of Major Events:\n"
-                "- **1939**: Invasion of Poland triggers war in Europe.\n"
-                "- **1941**: Attack on Pearl Harbor brings the United States into the war.\n"
-                "- **1944**: D-Day Allied landings liberate Western Europe.\n"
-                "- **1945**: End of WWII and founding of the United Nations.")
 
 import base64
 import io
@@ -187,24 +124,63 @@ def get_base_fallback_response(user_text, mode):
                 "Please upload an image using the **Camera** or **Attachment** button in the search bar, and I will scan and analyze it for you!")
 
     # Conversational & AI Identity Prompts (ChatGPT / Gemini style intent router)
-    identity_triggers = ["give me your name", "what is your name", "whats your name", "tell me your name", "who are you", "your name", "who created you", "what are you"]
+    identity_triggers = [
+        "give me your name", "what is your name", "whats your name", "tell me your name",
+        "who are you", "your name", "who created you", "what are you",
+        "describe yourself", "about yourself", "tell me about yourself", "tell about yourself",
+        "introduce yourself", "tell me who you are", "explain about yourself"
+    ]
     if any(pat in text for pat in identity_triggers):
-        return ("✨ **I am your Voice-Based Intelligent Learning Assistant!**\n\n"
-                "I am an advanced conversational AI companion designed to help you learn efficiently:\n\n"
-                "- 🧠 **Academic & Real-World Knowledge**: Ask me about science, coding, history, math, literature, or animals.\n"
+        return ("✨ **Hello! I am your Voice-Based Intelligent Learning Assistant.**\n\n"
+                "I am an advanced educational AI designed to be your personal 24/7 tutor, mentor, and study companion. Think of me like ChatGPT, but specially enhanced for voice learning, multi-modal study sessions, and interactive education:\n\n"
+                "- 🧠 **Academic & Real-World Knowledge**: Ask me about science, coding, history, math, literature, or engineering.\n"
+                "- 🎯 **Exam Guidance**: Specialized preparation roadmaps for competitive exams like **GATE**, **GRE**, and university exams.\n"
                 "- 📸 **Full Page Vision & Document OCR**: Upload any photo, diagram, or textbook page for an instant breakdown.\n"
                 "- 🎨 **AI Image Generation**: Type *'generate image of galaxy'* or *'draw a futuristic city'* to create visuals.\n"
                 "- 🎓 **Interactive Study Quizzes**: Test your knowledge step-by-step with adaptive feedback.\n\n"
                 "How can I assist your study session today?")
 
-    help_triggers = ["what can you do", "how can you help", "what are your features", "how do you work", "help me"]
+    help_triggers = [
+        "how you work", "how do you work", "how you can work", "how you actually work",
+        "how does this work", "how can you help", "what can you do", "what are your features",
+        "what are your capabilities", "help me", "how to use", "how do i use", "how do you help"
+    ]
     if any(pat in text for pat in help_triggers):
-        return ("💡 **Here is what I can do for you:**\n\n"
-                "1. **Answer Any Educational Query**: Ask about quantum physics, biology, history, calculus, or programming.\n"
-                "2. **Full Page Vision & Document OCR**: Upload any photo or textbook page to extract and explain all the matter.\n"
-                "3. **AI Image Generation**: Type *'generate image of space'* or *'draw a futuristic city'* to create visuals.\n"
-                "4. **Adaptive Voice Controls**: Click **'Simplify That'** or **'Explain Differently'** to change explanation speed.\n"
-                "5. **Screen Reader Shortcuts**: Press `Alt+M` for Mic, `Alt+S` for Silence, `Alt+R` for Repeat.")
+        return ("💡 **Here is exactly how I work for you:**\n\n"
+                "1. **Interactive Conversational AI**: Ask me any question across science, engineering, coding, math, exam prep (GATE, GRE), or general knowledge. I break down difficult topics into clear, easy-to-understand explanations.\n"
+                "2. **Real-Time Voice Interaction**: Speak your questions through your microphone (`Alt+M`) and listen to my spoken responses (`Alt+R` to repeat, `Alt+S` to silence).\n"
+                "3. **Multimodal Vision & Document OCR**: Upload pictures, diagrams, or textbook pages using the attachment button, and I will scan and extract all text and concepts.\n"
+                "4. **Interactive Video & Visuals**: Request *'generate video of [topic]'* or *'generate image of [topic]'* to see direct motion demonstrations and custom illustrations.\n"
+                "5. **Adaptive Voice Controls**: Click **'Simplify That'** or **'Explain Differently'** to adapt explanation depth and speed.\n\n"
+                "What would you like to learn or explore right now?")
+
+    # GATE Exam Preparation Guidance
+    gate_triggers = ["gate exam", "prepare for gate", "guide me to prepare for gate", "preparation for gate", "gate preparation", "crack gate", "study for gate"]
+    if any(pat in text for pat in gate_triggers):
+        return ("## 🎯 Comprehensive Roadmap: How to Prepare for the GATE Exam\n\n"
+                "Preparing for the **GATE (Graduate Aptitude Test in Engineering)** requires a disciplined, strategic, and concept-driven approach. Here is your actionable step-by-step preparation plan:\n\n"
+                "### 1. Understand the Exam Pattern & Weightage\n"
+                "- **General Aptitude (GA)**: 15 marks (High return on effort — practice daily).\n"
+                "- **Engineering Mathematics**: 13–15 marks (Linear Algebra, Calculus, Probability, Differential Equations).\n"
+                "- **Core Subject Technical Section**: 70–72 marks (Focus on high-weightage core subjects).\n"
+                "- **Total**: 100 marks, 65 questions (MCQs, MSQs, and Numerical Answer Type / NAT).\n\n"
+                "### 2. Phase-by-Phase Preparation Strategy\n"
+                "- **Phase 1: Concept Mastery (Months 1–4)**\n"
+                "  - Pick 1 heavy subject + 1 light subject simultaneously.\n"
+                "  - Make short handwritten formula notes and concept summary sheets after each chapter.\n"
+                "  - Never passively read: solve standard textbook examples immediately after studying a topic.\n"
+                "- **Phase 2: Previous Year Questions / PYQs (Months 4–5)**\n"
+                "  - Solve at least the last **15 to 20 years of GATE PYQs**.\n"
+                "  - Categorize your mistakes: *Conceptual Error*, *Calculation Mistake*, or *Misread Question*.\n"
+                "- **Phase 3: Test Series & Full-Length Mocks (Last 6–8 Weeks)**\n"
+                "  - Take Subject Tests → Multi-Subject Tests → Full-Length Mock Tests.\n"
+                "  - Practice using the **Virtual Calculator** early to get comfortable with the interface.\n"
+                "  - Analyze every test: Spend 2 hours analyzing a 3-hour test.\n\n"
+                "### 3. Golden Tips for Success\n"
+                "- 🔄 **Active Recall & Revision**: Revise formulas every Sunday using your short notes.\n"
+                "- ⏱️ **Time Management**: Aim for 70+ marks for top IITs / PSUs.\n"
+                "- ⚠️ **Avoid Negative Marking**: In MCQs, never guess unless you have eliminated at least two options.\n\n"
+                "What engineering branch are you preparing for (e.g. CSE, ECE, ME, CE, EE)? Tell me, and I will tailor a subject-wise timetable for you!")
     
 
 
@@ -670,7 +646,7 @@ class APIKeyManager:
         # 1. User supplied key or database key
         if user_supplied_key and user_supplied_key.strip():
             k = user_supplied_key.strip("'\" \t\r\n")
-            if k not in ["your_gemini_api_key_here", "your_openai_api_key_here"]:
+            if k not in ["your_gemini_api_key_here", "your_openai_api_key_here"] and not k.startswith("AQ."):
                 keys.append(k)
 
         # 2. Comma-separated GEMINI_API_KEYS env variable
@@ -678,7 +654,7 @@ class APIKeyManager:
         if multi_keys:
             for k in multi_keys.split(','):
                 k_clean = k.strip("'\" \t\r\n")
-                if k_clean and k_clean not in keys:
+                if k_clean and k_clean not in keys and not k_clean.startswith("AQ."):
                     keys.append(k_clean)
 
         # 3. Environment keys: GEMINI_API_KEY_1, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY
@@ -686,13 +662,13 @@ class APIKeyManager:
             env_k = os.getenv(f"GEMINI_API_KEY_{i}")
             if env_k:
                 clean_env = env_k.strip("'\" \t\r\n")
-                if clean_env and clean_env not in keys:
+                if clean_env and clean_env not in keys and not clean_env.startswith("AQ."):
                     keys.append(clean_env)
 
         primary_env = os.getenv("GEMINI_API_KEY")
         if primary_env:
             clean_pri = primary_env.strip("'\" \t\r\n")
-            if clean_pri and clean_pri not in keys:
+            if clean_pri and clean_pri not in keys and not clean_pri.startswith("AQ."):
                 keys.append(clean_pri)
 
         return keys
@@ -883,22 +859,22 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
     # 1. Gather all Cerebras keys
     cerebras_keys = []
     for k in ["CEREBRAS_API_KEY", "CEREBRAS_API_KEY1", "CEREBRAS_API_KEY2"]:
-        val = os.getenv(k) or get_setting(k.lower())
-        if val and val.strip():
+        val = os.getenv(k) or safe_get_setting(k.lower())
+        if val and val.strip() and not val.strip().startswith("your_"):
             cerebras_keys.append(val.strip())
 
     # 2. Gather all Groq keys
     groq_keys = []
     for k in ["GROQ_API_KEY", "GROQ_API_KEY1", "GROQ_API_KEY2"]:
-        val = os.getenv(k) or get_setting(k.lower())
-        if val and val.strip():
+        val = os.getenv(k) or safe_get_setting(k.lower())
+        if val and val.strip() and not val.strip().startswith("your_"):
             groq_keys.append(val.strip())
 
     # 3. Gather all OpenRouter keys
     openrouter_keys = []
     for k in ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY1", "OPENROUTER_API_KEY2"]:
-        val = os.getenv(k) or get_setting(k.lower())
-        if val and val.strip():
+        val = os.getenv(k) or safe_get_setting(k.lower())
+        if val and val.strip() and not val.strip().startswith("your_"):
             openrouter_keys.append(val.strip())
 
     if not cerebras_keys and not groq_keys and not openrouter_keys:
@@ -911,32 +887,9 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
         messages.append({"role": role, "content": msg.get('content', '')})
     messages.append({"role": "user", "content": user_text})
 
-    # 1. Cerebras API Pool (Ultra-fast inference: 2000 tokens/sec)
-    for key in cerebras_keys:
-        for model_id in ["llama-3.3-70b", "llama3.1-8b"]:
-            try:
-                url = "https://api.cerebras.ai/v1/chat/completions"
-                payload = json.dumps({
-                    "model": model_id,
-                    "messages": messages,
-                    "temperature": 0.7
-                }).encode('utf-8')
-                req = urllib.request.Request(url, data=payload, headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {key}",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-                }, method='POST')
-                with urllib.request.urlopen(req, timeout=3.5) as response:
-                    data = json.loads(response.read().decode('utf-8'))
-                    choices = data.get('choices', [])
-                    if choices and 'message' in choices[0]:
-                        return choices[0]['message'].get('content')
-            except Exception as e:
-                print(f"Cerebras API notice for {model_id}: {e}")
-
-    # 2. Groq API Pool (Sub-second response speeds)
+    # 1. Groq Cloud Engine (Ultra-fast 0.3s sub-second responses with 20B / 27B / 120B models)
     for key in groq_keys:
-        for model_id in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
+        for model_id in ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"]:
             try:
                 url = "https://api.groq.com/openai/v1/chat/completions"
                 payload = json.dumps({
@@ -949,13 +902,40 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                     "Authorization": f"Bearer {key}",
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
                 }, method='POST')
-                with urllib.request.urlopen(req, timeout=3.5) as response:
+                with urllib.request.urlopen(req, timeout=5.0) as response:
                     data = json.loads(response.read().decode('utf-8'))
                     choices = data.get('choices', [])
                     if choices and 'message' in choices[0]:
-                        return choices[0]['message'].get('content')
+                        ans = choices[0]['message'].get('content')
+                        if ans and len(ans.strip()) > 0:
+                            return ans
             except Exception as e:
                 print(f"Groq API notice for {model_id}: {e}")
+
+    # 2. Cerebras API Pool (High-throughput inference)
+    for key in cerebras_keys:
+        for model_id in ["llama-3.3-70b", "llama3.1-8b", "llama3.1-70b"]:
+            try:
+                url = "https://api.cerebras.ai/v1/chat/completions"
+                payload = json.dumps({
+                    "model": model_id,
+                    "messages": messages,
+                    "temperature": 0.7
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {key}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                }, method='POST')
+                with urllib.request.urlopen(req, timeout=5.0) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    choices = data.get('choices', [])
+                    if choices and 'message' in choices[0]:
+                        ans = choices[0]['message'].get('content')
+                        if ans and len(ans.strip()) > 0:
+                            return ans
+            except Exception as e:
+                print(f"Cerebras API notice for {model_id}: {e}")
 
     # 3. OpenRouter API Pool (Multi-Model fallback)
     for key in openrouter_keys:
@@ -970,13 +950,17 @@ def call_hybrid_provider_api(user_text, system_prompt="You are an expert tutor."
                 req = urllib.request.Request(url, data=payload, headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {key}",
+                    "HTTP-Referer": "https://assistant.ai",
+                    "X-Title": "Voice Learning Assistant",
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
                 }, method='POST')
-                with urllib.request.urlopen(req, timeout=3.5) as response:
+                with urllib.request.urlopen(req, timeout=6.0) as response:
                     data = json.loads(response.read().decode('utf-8'))
                     choices = data.get('choices', [])
                     if choices and 'message' in choices[0]:
-                        return choices[0]['message'].get('content')
+                        ans = choices[0]['message'].get('content')
+                        if ans and len(ans.strip()) > 0:
+                            return ans
             except Exception as e:
                 print(f"OpenRouter API notice for {model_id}: {e}")
 
@@ -1023,26 +1007,41 @@ def get_ai_response(user_text, history=[], mode="Teacher", image_data=None, lang
 
         sys_prompt = system_prompts.get(mode, system_prompts["Teacher"])
 
-        # 1. Primary Option: Try Google Gemini API key pool
-        all_keys = key_manager.get_all_keys(api_key)
-        if all_keys:
-            for _ in range(len(all_keys)):
-                current_pooled_key = key_manager.get_valid_key(api_key)
-                if current_pooled_key:
-                    try:
-                        gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
-                        if gemini_res:
-                            return gemini_res
-                    except Exception as e:
-                        print(f"Gemini API attempt error: {e}")
+        # 1. If image is provided, route directly to Gemini Multimodal Vision
+        if has_image:
+            all_keys = key_manager.get_all_keys(api_key)
+            if all_keys:
+                for _ in range(len(all_keys)):
+                    current_pooled_key = key_manager.get_valid_key(api_key)
+                    if current_pooled_key:
+                        try:
+                            gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
+                            if gemini_res:
+                                return gemini_res
+                        except Exception as e:
+                            print(f"Gemini API attempt error: {e}")
 
-        # 2. Solution 3 Hybrid Option: Try Groq / OpenRouter Multi-Provider Online AI
+        # 2. Ultra-Fast High-Intelligence Online AI Router (Groq 120B / Cerebras / OpenRouter)
         try:
             hybrid_res = call_hybrid_provider_api(user_text, sys_prompt, history)
             if hybrid_res:
                 return hybrid_res
         except Exception as e:
             print(f"Hybrid provider API attempt error: {e}")
+
+        # 3. If no image and hybrid didn't respond, try Gemini API key pool
+        if not has_image:
+            all_keys = key_manager.get_all_keys(api_key)
+            if all_keys:
+                for _ in range(len(all_keys)):
+                    current_pooled_key = key_manager.get_valid_key(api_key)
+                    if current_pooled_key:
+                        try:
+                            gemini_res = call_gemini_api(current_pooled_key, user_text, sys_prompt, mode, image_data, history)
+                            if gemini_res:
+                                return gemini_res
+                        except Exception as e:
+                            print(f"Gemini API attempt error: {e}")
 
         # 3. Tertiary Option: Rich Knowledge Synthesis Engine
         local_res = get_local_fallback_response(user_text, mode, has_image, history, image_data)
