@@ -104,8 +104,8 @@ def text_to_speech(text, folder='static/audio', language='auto'):
     if not cleaned_text:
         cleaned_text = "I have generated a response for you."
     
-    # Use first ~800 chars for comprehensive, natural spoken audio
-    speech_snippet = cleaned_text[:800]
+    # Use up to 2500 chars for comprehensive, natural spoken audio
+    speech_snippet = cleaned_text[:2500]
 
     
     # Determine gTTS language code

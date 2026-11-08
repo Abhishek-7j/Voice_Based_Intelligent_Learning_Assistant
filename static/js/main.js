@@ -92,9 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let recognition;
 
     let isSpeechCanceled = false;
+    let currentSpeechSessionId = 0;
+    let speechChunks = [];
+    let currentChunkIndex = 0;
+    let windowSpeechActive = false;
 
     function stopSpeechPlayback() {
         isSpeechCanceled = true;
+        currentSpeechSessionId++; // Instantly invalidate any active/queued utterances and timeouts
+        speechChunks = [];
+        currentChunkIndex = 0;
+        windowSpeechActive = false;
+        window.activeUtterance = null;
+
         if ('speechSynthesis' in window) {
             try {
                 window.speechSynthesis.pause();
@@ -446,6 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleSendMessage() {
+        stopSpeechPlayback(); // Stop any active speech immediately upon sending a message
         const text = userInput.value.trim();
         
         // Check if user is asking follow-up about an uploaded image in this session
@@ -610,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function selectConversation(convId, mode) {
+        stopSpeechPlayback();
         currentConversationId = convId;
         
         // Update mode active buttons
@@ -704,8 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         userInput.value = '';
         clearImagePreview();
-        ttsPlayer.pause();
-        audioControlBar.style.display = 'none';
+        stopSpeechPlayback();
         
         // Re-attach listeners to new prompt chips
         const newChips = chatHistory.querySelectorAll('.prompt-chip');
@@ -809,9 +820,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Web Speech Synthesis Neural Voice Player ---
+    // --- Web Speech Synthesis Neural Voice Player (Sentence Queue Architecture) ---
     let currentSpeechText = "";
-
     let currentSpeechAudioUrl = null;
     window.activeUtterance = null;
 
@@ -823,11 +833,68 @@ document.addEventListener('DOMContentLoaded', () => {
         // Strip markdown images, links, HTML, symbols
         clean = clean.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
         clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        clean = clean.replace(/https?:\/\/\S+/gi, '');
         clean = clean.replace(/<[^>]*>/g, '');
         clean = clean.replace(/#{1,6}\s*/g, '');
         clean = clean.replace(/\*\*|__|\*|_|~~|`/g, '');
+        clean = clean.replace(/\|/g, ' ');
+        clean = clean.replace(/^[-=_]{3,}\s*$/gm, '');
+        clean = clean.replace(/^\s*[-•+]\s+/gm, '');
+        clean = clean.replace(/•/g, ' ');
         clean = clean.replace(/[\u2600-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
         return clean.replace(/\s+/g, ' ').trim();
+    }
+
+    function splitTextIntoSentences(text) {
+        if (!text) return [];
+        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const rawPieces = normalized.split(/(?<=[.?!;:•\n])\s+/);
+        const chunks = [];
+        let currentChunk = "";
+        for (let piece of rawPieces) {
+            piece = piece.trim();
+            if (!piece) continue;
+            if (currentChunk && (currentChunk.length + piece.length + 1) <= 180) {
+                currentChunk += " " + piece;
+            } else {
+                if (currentChunk) chunks.push(currentChunk);
+                if (piece.length > 220) {
+                    const subParts = piece.split(/(?<=[,])\s+/);
+                    let subChunk = "";
+                    for (let sub of subParts) {
+                        sub = sub.trim();
+                        if (!sub) continue;
+                        if (subChunk && (subChunk.length + sub.length + 1) <= 180) {
+                            subChunk += " " + sub;
+                        } else {
+                            if (subChunk) chunks.push(subChunk);
+                            if (sub.length > 220) {
+                                const words = sub.split(/\s+/);
+                                let wordChunk = "";
+                                for (let w of words) {
+                                    if (wordChunk && (wordChunk.length + w.length + 1) <= 160) {
+                                        wordChunk += " " + w;
+                                    } else {
+                                        if (wordChunk) chunks.push(wordChunk);
+                                        wordChunk = w;
+                                    }
+                                }
+                                if (wordChunk) chunks.push(wordChunk);
+                                subChunk = "";
+                            } else {
+                                subChunk = sub;
+                            }
+                        }
+                    }
+                    if (subChunk) chunks.push(subChunk);
+                    currentChunk = "";
+                } else {
+                    currentChunk = piece;
+                }
+            }
+        }
+        if (currentChunk) chunks.push(currentChunk);
+        return chunks.filter(c => c && c.trim().length > 0);
     }
 
     function playSpeech(text, fallbackAudioUrl) {
@@ -839,53 +906,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanedText = cleanTextForSpeech(text);
         if (!cleanedText) return;
 
-        // Try WebSpeech API first; if unavailable, immediately use server-rendered MP3
+        const sessionId = ++currentSpeechSessionId;
+
+        // Use WebSpeech API with sequential sentence queue
         if ('speechSynthesis' in window) {
-            speakWithWebSpeech(cleanedText, fallbackAudioUrl);
+            try {
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.resume();
+            } catch(e) {}
+
+            speechChunks = splitTextIntoSentences(cleanedText);
+            currentChunkIndex = 0;
+            if (speechChunks.length > 0) {
+                playSentenceQueue(sessionId, fallbackAudioUrl);
+            }
         } else if (fallbackAudioUrl) {
             playFallbackAudio(fallbackAudioUrl);
         }
     }
 
-    function playFallbackAudio(url) {
-        if (!url || !ttsPlayer || isSpeechCanceled) return;
-        try {
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            ttsPlayer.pause();
-            ttsPlayer.src = url;
-            ttsPlayer.playbackRate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
-            ttsPlayer.play().then(() => {
-                if (audioControlBar) audioControlBar.style.display = 'flex';
-                if (audioStatusText) audioStatusText.textContent = "Speaking...";
-                if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
-            }).catch(e => {
-                console.warn('Audio element play notice:', e);
-            });
-            ttsPlayer.onended = () => {
-                if (audioControlBar) audioControlBar.style.display = 'none';
-            };
-        } catch(e) {
-            console.warn('Fallback audio playback error:', e);
+    function playSentenceQueue(sessionId, fallbackAudioUrl) {
+        if (sessionId !== currentSpeechSessionId || isSpeechCanceled) return;
+
+        if (currentChunkIndex >= speechChunks.length) {
+            window.activeUtterance = null;
+            windowSpeechActive = false;
+            if (audioControlBar) audioControlBar.style.display = 'none';
+            return;
         }
-    }
 
-    function speakWithWebSpeech(cleanedText, fallbackAudioUrl) {
-        if (!('speechSynthesis' in window)) return;
+        const chunk = speechChunks[currentChunkIndex];
+        if (!chunk || !chunk.trim()) {
+            currentChunkIndex++;
+            playSentenceQueue(sessionId, fallbackAudioUrl);
+            return;
+        }
 
-        try {
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.resume();
-        } catch(e) {}
-
-        const utterance = new SpeechSynthesisUtterance(cleanedText.substring(0, 1500));
-        window.activeUtterance = utterance; // Prevent Chrome V8 garbage collection bug
+        const utterance = new SpeechSynthesisUtterance(chunk);
+        window.activeUtterance = utterance; // Prevent garbage collection bug in Chrome V8
         utterance.rate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
 
-        // Auto-detect language script directly from cleanedText characters
-        const isTelugu = /[\u0C00-\u0C7F]/.test(cleanedText);
-        const isHindi = /[\u0900-\u097F]/.test(cleanedText);
-        const isTamil = /[\u0B80-\u0BFF]/.test(cleanedText);
-        const isKannada = /[\u0C80-\u0CFF]/.test(cleanedText);
+        // Language routing directly from script characters
+        const isTelugu = /[\u0C00-\u0C7F]/.test(chunk);
+        const isHindi = /[\u0900-\u097F]/.test(chunk);
+        const isTamil = /[\u0B80-\u0BFF]/.test(chunk);
+        const isKannada = /[\u0C80-\u0CFF]/.test(chunk);
 
         if (isTelugu) utterance.lang = 'te-IN';
         else if (isHindi) utterance.lang = 'hi-IN';
@@ -906,45 +971,65 @@ document.addEventListener('DOMContentLoaded', () => {
             if (preferredVoice) utterance.voice = preferredVoice;
         }
 
-        let startedSpeaking = false;
-
-        // Watchdog: If WebSpeech does not start within 600ms, seamlessly play server-rendered MP3
-        const watchdog = setTimeout(() => {
-            if (!startedSpeaking && !isSpeechCanceled && fallbackAudioUrl) {
-                console.log("WebSpeech delayed or stalled; triggering high-fidelity server TTS audio.");
-                playFallbackAudio(fallbackAudioUrl);
-            }
-        }, 600);
-
         utterance.onstart = () => {
-            startedSpeaking = true;
-            clearTimeout(watchdog);
+            if (sessionId !== currentSpeechSessionId) {
+                try { window.speechSynthesis.cancel(); } catch(e) {}
+                return;
+            }
+            windowSpeechActive = true;
             if (audioControlBar) audioControlBar.style.display = 'flex';
             if (audioStatusText) audioStatusText.textContent = "Speaking...";
             if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
         };
 
         utterance.onend = () => {
-            clearTimeout(watchdog);
-            window.activeUtterance = null;
-            if (audioControlBar) audioControlBar.style.display = 'none';
+            if (sessionId !== currentSpeechSessionId || isSpeechCanceled) return;
+            currentChunkIndex++;
+            // Natural brief pause before starting the next sentence
+            setTimeout(() => {
+                playSentenceQueue(sessionId, fallbackAudioUrl);
+            }, 30);
         };
 
         utterance.onerror = (err) => {
-            clearTimeout(watchdog);
-            window.activeUtterance = null;
-            if (isSpeechCanceled) return;
-            console.warn('WebSpeech error, failing over to server audio:', err);
-            if (fallbackAudioUrl && !isSpeechCanceled) {
-                playFallbackAudio(fallbackAudioUrl);
-            }
+            if (sessionId !== currentSpeechSessionId || isSpeechCanceled) return;
+            if (err.error === 'canceled' || err.error === 'interrupted') return;
+            console.warn('Utterance chunk warning, proceeding to next sentence:', err);
+            currentChunkIndex++;
+            playSentenceQueue(sessionId, fallbackAudioUrl);
         };
 
         try {
             window.speechSynthesis.speak(utterance);
         } catch(e) {
-            clearTimeout(watchdog);
-            if (fallbackAudioUrl) playFallbackAudio(fallbackAudioUrl);
+            console.warn('Speech synthesis speak exception:', e);
+            if (currentChunkIndex === 0 && fallbackAudioUrl && !isSpeechCanceled) {
+                playFallbackAudio(fallbackAudioUrl);
+            }
+        }
+    }
+
+    function playFallbackAudio(url) {
+        if (!url || !ttsPlayer || isSpeechCanceled) return;
+        try {
+            if ('speechSynthesis' in window) {
+                try { window.speechSynthesis.cancel(); } catch(e) {}
+            }
+            ttsPlayer.pause();
+            ttsPlayer.src = url;
+            ttsPlayer.playbackRate = parseFloat(speechSpeedInput ? speechSpeedInput.value : 1.0);
+            ttsPlayer.play().then(() => {
+                if (audioControlBar) audioControlBar.style.display = 'flex';
+                if (audioStatusText) audioStatusText.textContent = "Speaking...";
+                if (audioBtnPause) audioBtnPause.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+            }).catch(e => {
+                console.warn('Fallback audio play notice:', e);
+            });
+            ttsPlayer.onended = () => {
+                if (audioControlBar) audioControlBar.style.display = 'none';
+            };
+        } catch(e) {
+            console.warn('Fallback audio playback exception:', e);
         }
     }
 
