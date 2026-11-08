@@ -17,6 +17,9 @@ def clean_text_for_speech(text):
 
     clean = text
 
+    # 0. Replace code blocks with concise spoken notice
+    clean = re.sub(r'```[\s\S]*?```', ' Code snippet provided on screen. ', clean)
+
     # 1. Remove markdown image tags ![alt](url) and links [text](url)
     clean = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', clean)
     clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', clean)
@@ -101,8 +104,8 @@ def text_to_speech(text, folder='static/audio', language='auto'):
     if not cleaned_text:
         cleaned_text = "I have generated a response for you."
     
-    # Use first ~250 chars for rapid speech preview (under 0.2 second generation)
-    speech_snippet = cleaned_text[:250]
+    # Use first ~800 chars for comprehensive, natural spoken audio
+    speech_snippet = cleaned_text[:800]
 
     
     # Determine gTTS language code
